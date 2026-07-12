@@ -1,0 +1,7 @@
+# Ignore database configuration secrets (recommended for public repos)
+# backend/config.php
+
+# OS metadata files
+.DS_Store
+Thumbs.db
+Desktop.ini

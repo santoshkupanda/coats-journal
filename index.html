@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COATS - Journal Publication Portal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Html2pdf.js for client-side PDF downloads -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            200: '#bbdffd',
+                            300: '#7ec4fc',
+                            400: '#38a5f8',
+                            500: '#0e8aee',
+                            600: '#026bcb',
+                            700: '#0355a4',
+                            800: '#074987',
+                            900: '#0c3e70',
+                            950: '#082749',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            background: radial-gradient(circle at top right, #0f172a, #020617);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+
+        .glass-card {
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .glass-input {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #f8fafc;
+            transition: all 0.2s ease;
+        }
+
+        .glass-input:focus {
+            border-color: #0e8aee;
+            box-shadow: 0 0 10px rgba(14, 138, 238, 0.25);
+            outline: none;
+        }
+
+        .document-paper {
+            padding: 1.2in;
+            background-color: white;
+            color: #201f1e;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            outline: none;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased text-slate-200">
+
+    <!-- Global App Header -->
+    <header class="border-b border-slate-800 bg-slate-950/70 backdrop-blur-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="h-9 w-9 bg-brand-600 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-brand-500/20">C</div>
+                <span class="text-md font-bold text-white tracking-wide">COATS <span class="text-xs text-brand-400 font-semibold uppercase ml-1 px-2 py-0.5 bg-brand-500/10 rounded-full">Journal</span></span>
+            </div>
+
+            <!-- Dashboard Role Simulator Switcher -->
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2 bg-slate-900 border border-slate-800 rounded-xl p-1 text-xs" id="role-simulator-bar">
+                    <span class="text-slate-500 font-semibold px-2">Role Simulator:</span>
+                    <select id="sim-role-select" onchange="switchRole(this.value)" class="bg-slate-950 border-0 rounded-lg px-2.5 py-1 text-xs text-brand-400 font-bold focus:ring-1 focus:ring-brand-500 outline-none">
+                        <option value="Contributor">Contributor (Author)</option>
+                        <option value="Reviewer">Peer Reviewer</option>
+                        <option value="Associate Editor">Associate Editor</option>
+                        <option value="Editorial Board">Editorial Board Member</option>
+                        <option value="Managing Editor">Managing/Section Editor</option>
+                        <option value="Editor-In-Chief">Editor-in-Chief</option>
+                        <option value="Production Staff">Production Staff</option>
+                        <option value="Super Admin">Super Admin</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <span id="user-display" class="text-xs text-slate-400 font-semibold">Dr. Sarah Connor</span>
+                    <button onclick="handleLogout()" class="p-2 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-900 transition" title="Log out">
+                        <i data-lucide="log-out" class="h-4 w-4"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- ==================== USER LOGIN & REGISTER VIEW ==================== -->
+        <section id="auth-view" class="hidden max-w-md mx-auto my-12">
+            <div class="glass-card rounded-2xl p-8 space-y-6">
+                <div class="text-center space-y-2">
+                    <h2 class="text-2xl font-bold text-white tracking-tight">Access Journal Portal</h2>
+                    <p class="text-xs text-slate-400">Log in or create a credentials account</p>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex border-b border-slate-800">
+                    <button onclick="toggleAuthTab('login')" id="btn-tab-login" class="w-1/2 pb-3 text-xs font-semibold border-b-2 border-brand-500 text-brand-400">Log In</button>
+                    <button onclick="toggleAuthTab('register')" id="btn-tab-register" class="w-1/2 pb-3 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-300">Register</button>
+                </div>
+
+                <!-- Login Form -->
+                <form id="login-form" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">Email Address</label>
+                        <input type="email" id="login-email" placeholder="sarah@journal.com" class="w-full px-3.5 py-2.5 rounded-xl glass-input text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">Password</label>
+                        <input type="password" id="login-password" placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-xl glass-input text-sm" required>
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition shadow-lg shadow-brand-600/20">
+                        Sign In
+                    </button>
+                    <p class="text-[10px] text-slate-500 text-center">Default seed pass is: username + 123 (e.g. author123)</p>
+                </form>
+
+                <!-- Register Form -->
+                <form id="register-form" onsubmit="handleRegisterSubmit(event)" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">Username</label>
+                        <input type="text" id="reg-username" placeholder="sarah" class="w-full px-3.5 py-2.5 rounded-xl glass-input text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">Email Address</label>
+                        <input type="email" id="reg-email" placeholder="sarah@journal.com" class="w-full px-3.5 py-2.5 rounded-xl glass-input text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">Password</label>
+                        <input type="password" id="reg-password" placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-xl glass-input text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">Assigned Role</label>
+                        <select id="reg-role" class="w-full px-3.5 py-2.5 rounded-xl glass-input text-sm bg-slate-950">
+                            <option value="Contributor">Contributor (Author)</option>
+                            <option value="Reviewer">Peer Reviewer</option>
+                            <option value="Associate Editor">Associate Editor</option>
+                            <option value="Editorial Board">Editorial Board Member</option>
+                            <option value="Managing Editor">Managing/Section Editor</option>
+                            <option value="Editor-In-Chief">Editor-in-Chief</option>
+                            <option value="Production Staff">Production Staff</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition shadow-lg shadow-brand-600/20">
+                        Create Account
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ==================== CONTRIBUTOR (AUTHOR) VIEW ==================== -->
+        <section id="view-contributor" class="dashboard-view hidden space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold text-white tracking-wide">Contributor Workspace</h2>
+                    <p class="text-xs text-slate-400">Write, upload, and submit research papers</p>
+                </div>
+                <button onclick="createNewManuscript()" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow-lg shadow-brand-500/25">
+                    <i data-lucide="plus" class="h-4 w-4"></i>
+                    <span>Create Document</span>
+                </button>
+            </div>
+
+            <!-- Submission Inbox list -->
+            <div id="contributor-inbox" class="glass-card rounded-2xl p-6">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">My Manuscripts</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-500">
+                                <th class="pb-3">Title</th>
+                                <th class="pb-3">Submitted</th>
+                                <th class="pb-3">Status</th>
+                                <th class="pb-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="contributor-manuscripts-tbody" class="divide-y divide-slate-800/50">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== ASSOCIATE / MANAGING EDITOR VIEW ==================== -->
+        <section id="view-associate-editor" class="dashboard-view hidden space-y-6">
+            <div>
+                <h2 class="text-xl font-bold text-white tracking-wide">Associate & Section Editor Pane</h2>
+                <p class="text-xs text-slate-400">Manage review queues and assign peer reviewers</p>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Editorial Queue</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-500">
+                                <th class="pb-3">Manuscript</th>
+                                <th class="pb-3">Author</th>
+                                <th class="pb-3">Current Status</th>
+                                <th class="pb-3 text-right">Pipeline Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="editor-queue-tbody" class="divide-y divide-slate-800/50">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== PEER REVIEWER VIEW ==================== -->
+        <section id="view-reviewer" class="dashboard-view hidden space-y-6">
+            <div>
+                <h2 class="text-xl font-bold text-white tracking-wide">Reviewer Assessment Hub</h2>
+                <p class="text-xs text-slate-400">Evaluate manuscripts and write notes directly inside Microsoft Word</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <!-- Left panel: Inbox -->
+                <div class="lg:col-span-1 glass-card rounded-2xl p-5 space-y-4">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-2">Assigned Works</h3>
+                    <div id="reviewer-assignments-list" class="space-y-3">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Right panel: Document Viewer / Review actions -->
+                <div class="lg:col-span-3 glass-card rounded-2xl p-6 space-y-6 hidden" id="reviewer-document-container">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                        <div>
+                            <h3 id="reviewer-doc-title" class="text-sm font-semibold text-white">Manuscript Title</h3>
+                            <p id="reviewer-doc-author" class="text-[10px] text-slate-400 mt-1">Author: Dr. Connor</p>
+                        </div>
+                        <input type="hidden" id="reviewer-manuscript-id">
+                        <input type="hidden" id="reviewer-review-id">
+                    </div>
+
+                    <!-- Word Online iframe -->
+                    <div class="w-full h-[600px] border border-slate-800 rounded-xl overflow-hidden shadow-2xl relative bg-slate-900">
+                        <iframe id="reviewer-msword-iframe" src="about:blank" class="w-full h-full relative z-10 hidden" frameborder="0"></iframe>
+                        
+                        <!-- Fallback panel shown in Mock Mode -->
+                        <div id="reviewer-msword-iframe-fallback" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-0">
+                            <i data-lucide="cloud-lightning" class="h-10 w-10 text-brand-500 mb-3 animate-pulse"></i>
+                            <h3 class="text-xs font-bold text-white uppercase tracking-wider mb-2">Microsoft Word Online Workspace</h3>
+                            <p class="text-[10px] text-slate-400 max-w-sm mb-4">Connect your OneDrive account in the Super Admin panel to enable inline iframe reviews, or open the official Word Web App directly to evaluate the paper:</p>
+                            <a id="btn-reviewer-fallback-open-word" href="https://onedrive.live.com/edit.aspx" target="_blank" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-[10px] font-bold uppercase tracking-wide shadow-lg shadow-brand-500/25 flex items-center space-x-2 transition">
+                                <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
+                                <span>Open Word Online in New Tab</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Peer Review Decision form -->
+                    <div class="bg-slate-900/50 border border-slate-800/55 rounded-2xl p-5 space-y-4">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Submit Recommendation</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">Decision</label>
+                                <select id="reviewer-recommendation" class="w-full px-3 py-2 rounded-lg glass-input text-xs bg-slate-950">
+                                    <option value="Accept">Accept Manuscript</option>
+                                    <option value="Revisions Required">Request Revisions</option>
+                                    <option value="Reject">Reject Paper</option>
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">Remarks to Editorial Board</label>
+                                <input type="text" id="reviewer-remarks" placeholder="Brief assessment notes..." class="w-full px-3 py-2 rounded-lg glass-input text-xs">
+                            </div>
+                        </div>
+                        <div class="flex justify-end">
+                            <button onclick="submitReviewerDecision()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold uppercase tracking-wider transition shadow-md shadow-emerald-600/25">
+                                Submit Decision
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== EDITORIAL BOARD VIEW ==================== -->
+        <section id="view-editorial-board" class="dashboard-view hidden space-y-6">
+            <div>
+                <h2 class="text-xl font-bold text-white tracking-wide">Editorial Board Review Desk</h2>
+                <p class="text-xs text-slate-400">Evaluate peer review decisions and recommend stages</p>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Board Queue</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-500">
+                                <th class="pb-3">Title</th>
+                                <th class="pb-3">Author</th>
+                                <th class="pb-3">Review Recommendations</th>
+                                <th class="pb-3 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="board-queue-tbody" class="divide-y divide-slate-800/50">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== EDITOR-IN-CHIEF VIEW ==================== -->
+        <section id="view-editor-in-chief" class="dashboard-view hidden space-y-6">
+            <div>
+                <h2 class="text-xl font-bold text-white tracking-wide">Editor-In-Chief Dashboard</h2>
+                <p class="text-xs text-slate-400">Final manuscript sign-offs and printing releases</p>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Final Approval Queue</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-500">
+                                <th class="pb-3">Manuscript</th>
+                                <th class="pb-3">Author</th>
+                                <th class="pb-3">Board Remarks</th>
+                                <th class="pb-3 text-right">Decision</th>
+                            </tr>
+                        </thead>
+                        <tbody id="eic-queue-tbody" class="divide-y divide-slate-800/50">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== PRODUCTION STAFF VIEW ==================== -->
+        <section id="view-production-staff" class="dashboard-view hidden space-y-6">
+            <div>
+                <h2 class="text-xl font-bold text-white tracking-wide">Production & Publication Studio</h2>
+                <p class="text-xs text-slate-400">Format and print approved articles in Nature, IEEE, or Chicago Layouts</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left panel: Inbox -->
+                <div class="lg:col-span-1 glass-card rounded-2xl p-5 space-y-4">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-2">Approved Papers</h3>
+                    <div id="production-approved-list" class="space-y-3">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Right panel: Styling compiler -->
+                <div class="lg:col-span-2 glass-card rounded-2xl p-6 space-y-6 hidden" id="production-compiler-box">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                        <div>
+                            <h3 id="prod-doc-title" class="text-sm font-semibold text-white">Title</h3>
+                            <p id="prod-doc-author" class="text-[10px] text-slate-400 mt-1">Author: Dr. Sarah Connor</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <label class="text-xs text-slate-400">Layout:</label>
+                            <select id="production-style-template" onchange="applyStyleTemplate()" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-xs text-brand-400 font-bold focus:ring-1 focus:ring-brand-500 outline-none">
+                                <option value="Nature">Nature Template</option>
+                                <option value="IEEE">IEEE Layout (Two-Column)</option>
+                                <option value="Chicago">Chicago Press Style</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Print Layout preview -->
+                    <div class="w-full max-h-[500px] overflow-y-auto border border-slate-800 rounded-xl bg-slate-900/40 p-4">
+                        <div class="a4-preview-box" id="styled-document-preview">
+                            <!-- Rendered styled A4 preview -->
+                        </div>
+                    </div>
+
+                    <!-- Downloads controls -->
+                    <div class="flex justify-end space-x-3 pt-3 border-t border-slate-800">
+                        <button onclick="triggerAutomaticDownload('docx')" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold uppercase transition flex items-center space-x-2">
+                            <i data-lucide="download" class="h-3.5 w-3.5 text-brand-400"></i>
+                            <span>Download .docx</span>
+                        </button>
+                        <button onclick="triggerAutomaticDownload('pdf')" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition shadow-lg shadow-brand-500/25 flex items-center space-x-2">
+                            <i data-lucide="printer" class="h-3.5 w-3.5"></i>
+                            <span>Print .pdf</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SUPER ADMIN SETTINGS VIEW ==================== -->
+        <section id="view-super-admin" class="dashboard-view hidden space-y-8">
+            <div>
+                <h2 class="text-xl font-bold text-white tracking-wide">Super Admin Command Center</h2>
+                <p class="text-xs text-slate-400">System initialization, credentials integration, and directories configuration</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Credentials setting -->
+                <div class="glass-card rounded-2xl p-6 space-y-6">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-2">Microsoft Graph Integration</h3>
+                    <form onsubmit="handleSaveSettings(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">Application (Client) ID</label>
+                            <input type="text" id="admin-client-id" placeholder="00000000-0000-0000-0000-000000000000" class="w-full px-3 py-2 rounded-lg glass-input text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">Directory (Tenant) ID</label>
+                            <input type="text" id="admin-tenant-id" placeholder="00000000-0000-0000-0000-000000000000" class="w-full px-3 py-2 rounded-lg glass-input text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">Client Secret Value</label>
+                            <input type="password" id="admin-client-secret" placeholder="••••••••" class="w-full px-3 py-2 rounded-lg glass-input text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">OAuth Redirect URI</label>
+                            <input type="text" id="admin-redirect-uri" placeholder="https://yourdomain.com/backend/onedrive_callback.php" class="w-full px-3 py-2 rounded-lg glass-input text-xs">
+                        </div>
+                        <div class="flex items-center justify-between pt-2">
+                            <span id="onedrive-api-badge" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400">Offline Mock Mode</span>
+                            <button type="submit" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-semibold uppercase tracking-wider transition">Save Credentials</button>
+                        </div>
+                    </form>
+
+                    <!-- OAuth connection trigger -->
+                    <div id="onedrive-auth-box" class="hidden border-t border-slate-800 pt-4">
+                        <p class="text-xs text-slate-400 mb-3">To connect your Microsoft OneDrive Business Cloud Drive, click below:</p>
+                        <a id="btn-connect-onedrive" href="#" class="inline-flex items-center px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg text-xs uppercase tracking-wider transition shadow-md shadow-emerald-600/25">
+                            <i data-lucide="cloud-lightning" class="h-4 w-4 mr-2"></i>
+                            Connect OneDrive API
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Users list directory -->
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-2 mb-4">Users Directory</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-800 text-slate-500">
+                                    <th class="pb-2">Username</th>
+                                    <th class="pb-2">Email</th>
+                                    <th class="pb-2 text-right">Role</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-users-tbody" class="divide-y divide-slate-800/40">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== MANUSCRIPT WORKSPACE EDITOR IFRAME PANEL ==================== -->
+        <section id="word-editor-container" class="hidden space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-white tracking-wide" id="editor-display-title">Manuscript Editor</h2>
+                    <p class="text-xs text-slate-400">Write your paper natively. All changes auto-save directly to OneDrive Business.</p>
+                </div>
+                <div class="flex space-x-3">
+                    <input type="hidden" id="editor-manuscript-id">
+                    <button onclick="closeWordEditor()" class="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-xl text-xs font-semibold transition">
+                        Save Draft & Exit
+                    </button>
+                    <button onclick="submitManuscript()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition shadow-lg shadow-emerald-600/25">
+                        Submit for Review
+                    </button>
+                </div>
+            </div>
+
+            <!-- Full-width Word Online editor frame -->
+            <div class="glass-card rounded-2xl p-4">
+                <div class="w-full h-[700px] border border-slate-800 rounded-xl overflow-hidden shadow-2xl relative bg-slate-900">
+                    <iframe id="msword-iframe" src="" class="w-full h-full relative z-10 hidden" frameborder="0"></iframe>
+                    
+                    <!-- Fallback panel shown in Mock Mode -->
+                    <div id="msword-iframe-fallback" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-0">
+                        <i data-lucide="cloud-lightning" class="h-12 w-12 text-brand-500 mb-4 animate-pulse"></i>
+                        <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-2">Microsoft Word Online Workspace</h3>
+                        <p class="text-xs text-slate-400 max-w-sm mb-6">Microsoft blocks embedding unauthenticated Word pages in frames. Link your OneDrive account in the Super Admin dashboard to enable inline embedding, or open the official Word Web App directly:</p>
+                        <a id="btn-fallback-open-word" href="https://onedrive.live.com/edit.aspx" target="_blank" class="px-6 py-3 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold uppercase tracking-wide shadow-lg shadow-brand-500/25 flex items-center space-x-2 transition">
+                            <i data-lucide="external-link" class="h-4 w-4"></i>
+                            <span>Open Word Online in New Tab</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    <!-- Create Manuscript Modal -->
+    <div id="create-manuscript-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="glass-card rounded-2xl p-6 w-full max-w-xl space-y-4">
+            <h3 class="text-base font-bold text-white uppercase tracking-wider border-b border-slate-800 pb-2">Create New Manuscript</h3>
+            
+            <div class="grid grid-cols-1 gap-3">
+                <div>
+                    <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">Manuscript Title</label>
+                    <input type="text" id="modal-title" placeholder="Superposition Activation Values inside Quantum Neural Networks" class="w-full px-3 py-2 rounded-lg glass-input text-xs">
+                </div>
+                
+                <!-- Authors Section -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-[10px] text-slate-500 font-bold uppercase">Authors & Affiliations</label>
+                        <button onclick="addAuthorRow()" class="text-[10px] text-brand-400 hover:underline">+ Add Author</button>
+                    </div>
+                    <div id="modal-authors-list" class="space-y-2 max-h-28 overflow-y-auto pr-1">
+                        <div class="flex space-x-2 author-row">
+                            <input type="text" placeholder="Author Name" class="w-1/2 px-3 py-2 rounded-lg glass-input text-xs author-name">
+                            <input type="text" placeholder="Affiliation" class="w-1/2 px-3 py-2 rounded-lg glass-input text-xs author-affiliation">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">Abstract Section</label>
+                    <textarea id="modal-abstract" rows="3" placeholder="Brief research summary..." class="w-full px-3 py-2 rounded-lg glass-input text-xs"></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">Keywords</label>
+                    <input type="text" id="modal-keywords" placeholder="Deep Learning, Quantum Physics" class="w-full px-3 py-2 rounded-lg glass-input text-xs">
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 border-t border-slate-800 pt-3">
+                <button onclick="closeCreateModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-xl text-xs font-semibold">Cancel</button>
+                <button onclick="submitCreateModal()" class="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-brand-600/25">Create & Open Editor</button>
+            </div>
+        </div>
+    </div>
+
+    </main>
+
+    <!-- Global Floating Toast Notification system -->
+    <div id="toast-container" class="fixed bottom-5 right-5 space-y-2.5 z-50"></div>
+
+    <script>
+        // Seed database state
+        let currentUser = {
+            id: 2,
+            username: 'sarah',
+            email: 'sarah@journal.com',
+            role: 'Contributor',
+            permissions: { can_submit: true, can_review: false, can_assign: false, can_approve: false, can_publish: false }
+        };
+        
+        let manuscripts = [];
+        let reviews = [];
+        let currentWordContent = '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            
+            // Check if oauth success parameter is in url
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('oauth_success')) {
+                showToast("Connected", "Successfully integrated with Microsoft OneDrive API cloud folder!", "success");
+            }
+
+            // Sync Word Online iframe updates
+            window.addEventListener('message', (event) => {
+                if (event.data && event.data.type === 'wordOnlineSave') {
+                    currentWordContent = event.data.content;
+                }
+            });
+
+            // Start up with Contributor role view
+            switchRole('Contributor');
+            loadStateData();
+        });
+
+        // Toggle user auth panels
+        function toggleAuthTab(type) {
+            document.getElementById('login-form').classList.toggle('hidden', type !== 'login');
+            document.getElementById('register-form').classList.toggle('hidden', type !== 'register');
+            document.getElementById('btn-tab-login').className = type === 'login' ? "w-1/2 pb-3 text-xs font-semibold border-b-2 border-brand-500 text-brand-400" : "w-1/2 pb-3 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-300";
+            document.getElementById('btn-tab-register').className = type === 'register' ? "w-1/2 pb-3 text-xs font-semibold border-b-2 border-brand-500 text-brand-400" : "w-1/2 pb-3 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-300";
+        }
+
+        // Handle OAuth credentials loading
+        async function fetchAdminSettings() {
+            try {
+                const response = await fetch('backend/api.php?action=get_api_settings');
+                const result = await response.json();
+                if (result.status === 'success') {
+                    const settings = result.settings;
+                    document.getElementById('admin-client-id').value = settings.client_id;
+                    document.getElementById('admin-tenant-id').value = settings.tenant_id;
+                    document.getElementById('admin-client-secret').value = settings.client_secret;
+                    document.getElementById('admin-redirect-uri').value = settings.redirect_uri;
+
+                    const badge = document.getElementById('onedrive-api-badge');
+                    const authBox = document.getElementById('onedrive-auth-box');
+
+                    if (settings.is_connected) {
+                        badge.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400";
+                        badge.innerText = "OneDrive Synced";
+                        authBox.classList.add('hidden');
+                    } else {
+                        badge.className = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400";
+                        badge.innerText = "Offline Mock Mode";
+                        if (settings.auth_url) {
+                            authBox.classList.remove('hidden');
+                            document.getElementById('btn-connect-onedrive').href = settings.auth_url;
+                        } else {
+                            authBox.classList.add('hidden');
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn("Using offline mock settings.");
+            }
+        }
+
+        async function handleSaveSettings(e) {
+            e.preventDefault();
+            const data = {
+                client_id: document.getElementById('admin-client-id').value,
+                tenant_id: document.getElementById('admin-tenant-id').value,
+                client_secret: document.getElementById('admin-client-secret').value,
+                redirect_uri: document.getElementById('admin-redirect-uri').value
+            };
+
+            try {
+                const response = await fetch('backend/api.php?action=save_api_settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: jsonStringify(data)
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showToast("Settings Saved", "Microsoft Graph credentials loaded successfully.", "success");
+                    fetchAdminSettings();
+                }
+            } catch (err) {
+                showToast("Save Error", "Unable to update config credentials.", "error");
+            }
+        }
+
+        // State loaders
+        async function loadStateData() {
+            try {
+                const mResponse = await fetch(`backend/api.php?action=get_manuscripts&role=${currentUser.role}&user_id=${currentUser.id}`);
+                const mResult = await mResponse.json();
+                if (mResult.status === 'success') {
+                    manuscripts = mResult.manuscripts;
+                } else {
+                    throw new Error(mResult.message);
+                }
+
+                const rResponse = await fetch(`backend/api.php?action=get_reviews&reviewer_id=${currentUser.id}`);
+                const rResult = await rResponse.json();
+                if (rResult.status === 'success') {
+                    reviews = rResult.reviews;
+                } else {
+                    throw new Error(rResult.message);
+                }
+
+                // Render current view panels
+                renderActiveView();
+            } catch (e) {
+                // Seeding fallback state for offline mock presentation
+                if (manuscripts.length === 0) {
+                    manuscripts = [
+                        {
+                            id: 101,
+                            title: 'Superposition Activation Values inside Quantum Neural Networks',
+                            keywords: 'Deep Learning, Quantum Neural Networks, Quantum Computing',
+                            abstract: 'This paper outlines linear superposition properties inside multilayered activation structures.',
+                            content: `<h1>Superposition Activation Values inside Quantum Neural Networks</h1><p>Artificial neural network architectures typically utilize real-valued vectors. In this paper, we explore linear superposition properties within activation layers.</p><div class="equation-block">$$ \\Psi(x) = c_1\\phi_1(x) + c_2\\phi_2(x) $$</div><p>The acceleration of tensor products under this model is statistically significant and opens up new possibilities for multi-dimensional neural pipelines.</p>`,
+                            status: 'Draft',
+                            onedrive_url: 'mock_word_online.html',
+                            author_name: 'Dr. Sarah Connor'
+                        }
+                    ];
+                }
+                renderActiveView();
+            }
+        }
+
+        // Swapping Active Workspaces Views
+        function switchRole(role) {
+            currentUser.role = role;
+            
+            // Set mock permissions based on chosen role
+            currentUser.permissions.can_submit = (role === 'Contributor' || role === 'Super Admin' || role === 'Editor-In-Chief');
+            currentUser.permissions.can_review = (role === 'Reviewer' || role === 'Super Admin' || role === 'Editorial Board' || role === 'Editor-In-Chief');
+            currentUser.permissions.can_assign = (role === 'Managing Editor' || role === 'Super Admin' || role === 'Editor-In-Chief');
+            currentUser.permissions.can_approve = (role === 'Editorial Board' || role === 'Managing Editor' || role === 'Editor-In-Chief' || role === 'Super Admin');
+            currentUser.permissions.can_publish = (role === 'Production Staff' || role === 'Super Admin');
+
+            document.getElementById('user-display').innerText = `Role: ${role}`;
+            document.getElementById('word-editor-container').classList.add('hidden');
+            
+            // Render view panels
+            renderActiveView();
+        }
+
+        function renderActiveView() {
+            document.querySelectorAll('.dashboard-view').forEach(el => el.classList.add('hidden'));
+            
+            const role = currentUser.role;
+            if (role === 'Contributor') {
+                document.getElementById('view-contributor').classList.remove('hidden');
+                renderContributorView();
+            } else if (role === 'Associate Editor') {
+                document.getElementById('view-associate-editor').classList.remove('hidden');
+                renderAssociateEditorQueue();
+            } else if (role === 'Reviewer') {
+                document.getElementById('view-reviewer').classList.remove('hidden');
+                renderReviewerAssignments();
+            } else if (role === 'Editorial Board') {
+                document.getElementById('view-editorial-board').classList.remove('hidden');
+                renderEditorialBoardQueue();
+            } else if (role === 'Editor-In-Chief') {
+                document.getElementById('view-editor-in-chief').classList.remove('hidden');
+                renderEicQueue();
+            } else if (role === 'Production Staff') {
+                document.getElementById('view-production-staff').classList.remove('hidden');
+                renderProductionQueue();
+            } else if (role === 'Super Admin') {
+                document.getElementById('view-super-admin').classList.remove('hidden');
+                fetchAdminSettings();
+                renderAdminUsers();
+            }
+            lucide.createIcons();
+        }
+
+        // ==================== WORKSPACE RENDERERS ====================
+
+        // Contributor UI
+        function renderContributorView() {
+            const tbody = document.getElementById('contributor-manuscripts-tbody');
+            tbody.innerHTML = '';
+
+            manuscripts.forEach(m => {
+                const badgeColor = getStatusBadgeColor(m.status);
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-800/40 hover:bg-slate-900/10">
+                        <td class="py-4 font-semibold text-slate-200">${m.title}</td>
+                        <td class="py-4 text-slate-400">${new Date().toLocaleDateString()}</td>
+                        <td class="py-4"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${badgeColor}">${m.status}</span></td>
+                        <td class="py-4 text-right">
+                            ${(m.status === 'Draft' || m.status === 'Revisions Required') ? `
+                                <button onclick="openWordEditor(${m.id})" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-semibold transition">
+                                    Correct & Edit
+                                </button>
+                            ` : `
+                                <span class="text-slate-500 italic text-xs">Locked for evaluation</span>
+                            `}
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Associate Editor UI
+        function renderAssociateEditorQueue() {
+            const tbody = document.getElementById('editor-queue-tbody');
+            tbody.innerHTML = '';
+
+            const subPapers = manuscripts.filter(m => m.status === 'Submitted' || m.status === 'In Review');
+            if (subPapers.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-500 italic">No manuscripts inside queue.</td></tr>`;
+                return;
+            }
+
+            subPapers.forEach(m => {
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-800/40">
+                        <td class="py-4 font-semibold text-slate-200">${m.title}</td>
+                        <td class="py-4 text-slate-400">${m.author_name}</td>
+                        <td class="py-4"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${getStatusBadgeColor(m.status)}">${m.status}</span></td>
+                        <td class="py-4 text-right space-x-2">
+                            <button onclick="triggerReviewerAssignment(${m.id})" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-semibold transition">
+                                Assign Reviewer
+                            </button>
+                            <button onclick="forwardManuscriptStatus(${m.id}, 'Editorial Board')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition">
+                                Forward to Board
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Reviewer UI
+        function renderReviewerAssignments() {
+            const list = document.getElementById('reviewer-assignments-list');
+            list.innerHTML = '';
+
+            const assigned = manuscripts.filter(m => m.status === 'In Review');
+            if (assigned.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">No assigned manuscripts found.</p>`;
+                return;
+            }
+
+            assigned.forEach(m => {
+                list.innerHTML += `
+                    <div onclick="openReviewerDocWorkspace(${m.id})" class="p-3.5 bg-slate-900 border border-slate-800 hover:border-brand-500 rounded-xl cursor-pointer transition">
+                        <h4 class="text-xs font-semibold text-white line-clamp-1">${m.title}</h4>
+                        <p class="text-[10px] text-slate-400 mt-1">Author: ${m.author_name}</p>
+                    </div>
+                `;
+            });
+        }
+
+        function openReviewerDocWorkspace(id) {
+            const m = manuscripts.find(item => item.id === id);
+            if (m) {
+                document.getElementById('reviewer-document-container').classList.remove('hidden');
+                document.getElementById('reviewer-doc-title').innerText = m.title;
+                document.getElementById('reviewer-doc-author').innerText = `Author: ${m.author_name}`;
+                document.getElementById('reviewer-manuscript-id').value = m.id;
+                
+                const iframe = document.getElementById('reviewer-msword-iframe');
+                const fallback = document.getElementById('reviewer-msword-iframe-fallback');
+                let editorUrl = m.onedrive_url;
+
+                if (!editorUrl || editorUrl === 'mock_word_online.html') {
+                    iframe.classList.add('hidden');
+                    fallback.classList.remove('hidden');
+                    document.getElementById('btn-reviewer-fallback-open-word').href = "https://onedrive.live.com/edit.aspx";
+                } else {
+                    iframe.classList.remove('hidden');
+                    fallback.classList.add('hidden');
+                    iframe.src = editorUrl;
+                }
+            }
+        }
+
+        // Editorial Board UI
+        function renderEditorialBoardQueue() {
+            const tbody = document.getElementById('board-queue-tbody');
+            tbody.innerHTML = '';
+
+            const boardPapers = manuscripts.filter(m => m.status === 'Editorial Board');
+            if (boardPapers.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-500 italic">No papers waiting recommendation.</td></tr>`;
+                return;
+            }
+
+            boardPapers.forEach(m => {
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-800/40">
+                        <td class="py-4 font-semibold text-slate-200">${m.title}</td>
+                        <td class="py-4 text-slate-400">${m.author_name}</td>
+                        <td class="py-4 text-slate-400 italic">Peer checks OK. Clear annotations.</td>
+                        <td class="py-4 text-right space-x-2">
+                            <button onclick="forwardManuscriptStatus(${m.id}, 'Managing Editor')" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-semibold transition">
+                                Recommend Managing Editor
+                            </button>
+                            <button onclick="forwardManuscriptStatus(${m.id}, 'Revisions Required')" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-semibold transition">
+                                Request Changes
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Editor-In-Chief UI
+        function renderEicQueue() {
+            const tbody = document.getElementById('eic-queue-tbody');
+            tbody.innerHTML = '';
+
+            const eicPapers = manuscripts.filter(m => m.status === 'Editor-In-Chief');
+            if (eicPapers.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-500 italic">No final approval queues.</td></tr>`;
+                return;
+            }
+
+            eicPapers.forEach(m => {
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-800/40">
+                        <td class="py-4 font-semibold text-slate-200">${m.title}</td>
+                        <td class="py-4 text-slate-400">${m.author_name}</td>
+                        <td class="py-4 text-slate-400 italic">Recommended for print by Board & Sections.</td>
+                        <td class="py-4 text-right space-x-2">
+                            <button onclick="forwardManuscriptStatus(${m.id}, 'Approved')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition">
+                                Approve Publication
+                            </button>
+                            <button onclick="forwardManuscriptStatus(${m.id}, 'Revisions Required')" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-semibold transition">
+                                Reject to Author
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Production UI
+        function renderProductionQueue() {
+            const list = document.getElementById('production-approved-list');
+            list.innerHTML = '';
+
+            const approved = manuscripts.filter(m => m.status === 'Approved');
+            if (approved.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">No approved publications to format.</p>`;
+                return;
+            }
+
+            approved.forEach(m => {
+                list.innerHTML += `
+                    <div onclick="openProductionCompiler(${m.id})" class="p-3.5 bg-slate-900 border border-slate-800 hover:border-brand-500 rounded-xl cursor-pointer transition">
+                        <h4 class="text-xs font-semibold text-white line-clamp-1">${m.title}</h4>
+                        <p class="text-[10px] text-slate-400 mt-1">Ready for PDF compilation</p>
+                    </div>
+                `;
+            });
+        }
+
+        let activeProdManuscript = null;
+
+        function openProductionCompiler(id) {
+            activeProdManuscript = manuscripts.find(item => item.id === id);
+            if (activeProdManuscript) {
+                document.getElementById('production-compiler-box').classList.remove('hidden');
+                document.getElementById('prod-doc-title').innerText = activeProdManuscript.title;
+                document.getElementById('prod-doc-author').innerText = `Author: ${activeProdManuscript.author_name}`;
+                
+                applyStyleTemplate();
+            }
+        }
+
+        function applyStyleTemplate() {
+            if (!activeProdManuscript) return;
+
+            const template = document.getElementById('production-style-template').value;
+            const preview = document.getElementById('styled-document-preview');
+
+            let rawContent = activeProdManuscript.content;
+            
+            // Clean inline comment highlights for printing
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = rawContent;
+            tempDiv.querySelectorAll('.comment-highlight').forEach(el => {
+                el.replaceWith(...el.childNodes);
+            });
+            let styledBody = tempDiv.innerHTML;
+
+            if (template === 'Nature') {
+                preview.className = "document-paper rounded-lg shadow-xl font-serif leading-relaxed text-slate-900";
+                preview.innerHTML = `
+                    <div class="text-center mb-8 border-b-2 border-slate-900 pb-4">
+                        <p class="text-[10px] tracking-widest uppercase font-sans text-slate-500 font-bold">COATS Journal of Sciences</p>
+                        <h1 class="text-2xl mt-2 font-bold">${activeProdManuscript.title}</h1>
+                        <p class="text-xs italic text-slate-600 mt-1">${activeProdManuscript.author_name}</p>
+                    </div>
+                    <div class="text-sm bg-slate-50 p-4 border border-slate-200 rounded mb-6 italic leading-normal">
+                        <strong>Abstract</strong> — ${activeProdManuscript.abstract}
+                    </div>
+                    <div class="text-xs leading-relaxed space-y-4">
+                        ${styledBody}
+                    </div>
+                `;
+            } else if (template === 'IEEE') {
+                preview.className = "document-paper rounded-lg shadow-xl font-sans leading-normal text-slate-900";
+                preview.innerHTML = `
+                    <div class="text-center mb-6">
+                        <h1 class="text-xl font-bold uppercase tracking-tight">${activeProdManuscript.title}</h1>
+                        <p class="text-xs mt-2 font-semibold text-slate-700">${activeProdManuscript.author_name}</p>
+                    </div>
+                    <div class="text-xs leading-normal font-sans border-t border-slate-200 pt-4">
+                        <p class="font-bold mb-4"><span class="italic font-normal">Abstract</span>—${activeProdManuscript.abstract}</p>
+                        <div class="text-xs space-y-3">
+                            ${styledBody}
+                        </div>
+                    </div>
+                `;
+            } else {
+                preview.className = "document-paper rounded-lg shadow-xl font-serif leading-loose text-slate-900";
+                preview.innerHTML = `
+                    <div class="mb-8">
+                        <h1 class="text-2xl font-normal">${activeProdManuscript.title}</h1>
+                        <p class="text-sm mt-1 text-slate-800">${activeProdManuscript.author_name}</p>
+                    </div>
+                    <div class="text-sm space-y-4">
+                        <p class="italic">Abstract: ${activeProdManuscript.abstract}</p>
+                        ${styledBody}
+                    </div>
+                `;
+            }
+        }
+
+        // Trigger automatic DOCX/PDF printing downloads
+        function triggerAutomaticDownload(format) {
+            if (!activeProdManuscript) return;
+
+            const filename = `${activeProdManuscript.title.toLowerCase().replace(/ /g, "_")}_production`;
+
+            if (format === 'pdf') {
+                const element = document.getElementById('styled-document-preview');
+                const opt = {
+                    margin: 0.5,
+                    filename: `${filename}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2 },
+                    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+                };
+                html2pdf().set(opt).from(element).save();
+                showToast("PDF Exported", "Document compiled and sent to printer download.", "success");
+            } else {
+                // Simulate docx file download trade
+                const blob = new Blob([document.getElementById('styled-document-preview').innerHTML], {type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+                const link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.download = `${filename}.docx`;
+                link.click();
+                showToast("DOCX Exported", "Original .docx file download initialized.", "success");
+            }
+        }
+
+        // Super Admin directory lists
+        function renderAdminUsers() {
+            const tbody = document.getElementById('admin-users-tbody');
+            tbody.innerHTML = `
+                <tr class="border-b border-slate-800/40">
+                    <td class="py-2.5 font-semibold text-white">Dr. Sarah Connor</td>
+                    <td class="py-2.5 text-slate-400">sarah@journal.com</td>
+                    <td class="py-2.5 text-right"><span class="text-brand-400 font-bold text-[10px] uppercase">Contributor</span></td>
+                </tr>
+                <tr class="border-b border-slate-800/40">
+                    <td class="py-2.5 font-semibold text-white">Prof. John Doe</td>
+                    <td class="py-2.5 text-slate-400">john@journal.com</td>
+                    <td class="py-2.5 text-right"><span class="text-emerald-400 font-bold text-[10px] uppercase">Reviewer</span></td>
+                </tr>
+                <tr class="border-b border-slate-800/40">
+                    <td class="py-2.5 font-semibold text-white">Dr. Katherine Board</td>
+                    <td class="py-2.5 text-slate-400">board@journal.com</td>
+                    <td class="py-2.5 text-right"><span class="text-purple-400 font-bold text-[10px] uppercase">Editorial Board</span></td>
+                </tr>
+            `;
+        }
+
+        // ==================== WORKFLOW OPERATIONS ====================
+
+        function createNewManuscript() {
+            document.getElementById('modal-title').value = '';
+            document.getElementById('modal-abstract').value = '';
+            document.getElementById('modal-keywords').value = '';
+            document.getElementById('modal-authors-list').innerHTML = `
+                <div class="flex space-x-2 author-row">
+                    <input type="text" placeholder="Author Name" class="w-1/2 px-3 py-2 rounded-lg glass-input text-xs author-name">
+                    <input type="text" placeholder="Affiliation" class="w-1/2 px-3 py-2 rounded-lg glass-input text-xs author-affiliation">
+                </div>
+            `;
+            document.getElementById('create-manuscript-modal').classList.remove('hidden');
+        }
+
+        function addAuthorRow() {
+            const list = document.getElementById('modal-authors-list');
+            const div = document.createElement('div');
+            div.className = "flex space-x-2 author-row mt-2";
+            div.innerHTML = `
+                <input type="text" placeholder="Author Name" class="w-1/2 px-3 py-2 rounded-lg glass-input text-xs author-name">
+                <input type="text" placeholder="Affiliation" class="w-1/2 px-3 py-2 rounded-lg glass-input text-xs author-affiliation">
+                <button type="button" onclick="this.parentElement.remove()" class="text-rose-400 hover:text-rose-300 text-xs px-1">×</button>
+            `;
+            list.appendChild(div);
+        }
+
+        function closeCreateModal() {
+            document.getElementById('create-manuscript-modal').classList.add('hidden');
+        }
+
+        async function submitCreateModal() {
+            const title = document.getElementById('modal-title').value.trim();
+            const abstract = document.getElementById('modal-abstract').value.trim();
+            const keywords = document.getElementById('modal-keywords').value.trim();
+
+            if (!title) {
+                alert("Manuscript Title is required.");
+                return;
+            }
+
+            let authorList = [];
+            document.querySelectorAll('#modal-authors-list .author-row').forEach(row => {
+                const name = row.querySelector('.author-name').value.trim();
+                const aff = row.querySelector('.author-affiliation').value.trim();
+                if (name) {
+                    authorList.push(`${name} (${aff || 'Independent'})`);
+                }
+            });
+
+            const authorsStr = authorList.join(', ');
+
+            // Compile cover page HTML automatically
+            const compiledHtml = `
+                <h1 style="text-align: center; font-family: 'Calibri', sans-serif; font-size: 26px; color: #1f4e79; margin-bottom: 6px;">${title}</h1>
+                <p style="text-align: center; font-family: 'Calibri', sans-serif; font-size: 13px; color: #595959; margin-bottom: 24px;"><strong>Authors:</strong> ${authorsStr || 'Dr. Sarah Connor'}</p>
+                <div style="background-color: #f2f2f2; border-left: 3px solid #106ebe; padding: 12px; margin-bottom: 18px; font-family: 'Calibri', sans-serif; font-size: 12px; line-height: 1.4; color: #323130;">
+                    <strong>ABSTRACT</strong><br/>
+                    ${abstract || 'Enter abstract here...'}
+                </div>
+                <p style="font-family: 'Calibri', sans-serif; font-size: 12px; margin-bottom: 30px; color: #323130;"><strong>Keywords:</strong> ${keywords || 'Enter keywords...'}</p>
+                <hr style="border: none; border-top: 1px solid #d2d0ce; margin-bottom: 30px;" />
+                <p style="font-family: 'Georgia', serif; font-size: 14px; line-height: 1.6; color: #201f1e;">Start writing your manuscript content here...</p>
+            `;
+
+            let success = false;
+            let onedriveUrl = 'mock_word_online.html';
+            let newId = Date.now();
+
+            try {
+                const response = await fetch('backend/api.php?action=create_manuscript', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: jsonStringify({ title: title, author_id: currentUser.id })
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    newId = result.manuscript.id;
+                    onedriveUrl = result.manuscript.onedrive_url;
+                    success = true;
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (err) {
+                console.warn("API fetch error, fallback to local:", err);
+            }
+
+            const newDoc = {
+                id: newId,
+                title: title,
+                keywords: keywords,
+                abstract: abstract,
+                content: compiledHtml,
+                status: 'Draft',
+                onedrive_url: onedriveUrl,
+                author_name: currentUser.username
+            };
+
+            manuscripts.push(newDoc);
+
+            if (!success) {
+                showToast("Local Mock Mode", "Using offline mock storage.", "success");
+            }
+
+            closeCreateModal();
+            openWordEditor(newId);
+        }
+
+        function openWordEditor(id) {
+            document.getElementById('contributor-inbox').classList.add('hidden');
+            document.getElementById('word-editor-container').classList.remove('hidden');
+
+            const m = manuscripts.find(item => item.id === id);
+            document.getElementById('editor-manuscript-id').value = m.id;
+            document.getElementById('editor-display-title').innerText = m.title;
+            currentWordContent = m.content;
+
+            const iframe = document.getElementById('msword-iframe');
+            const fallback = document.getElementById('msword-iframe-fallback');
+            let editorUrl = m.onedrive_url;
+
+            if (!editorUrl || editorUrl === 'mock_word_online.html') {
+                iframe.classList.add('hidden');
+                fallback.classList.remove('hidden');
+                document.getElementById('btn-fallback-open-word').href = "https://onedrive.live.com/edit.aspx";
+            } else {
+                iframe.classList.remove('hidden');
+                fallback.classList.add('hidden');
+                iframe.src = editorUrl;
+            }
+            renderAuthorCommentsSidebar(m);
+        }
+
+        function closeWordEditor() {
+            document.getElementById('word-editor-container').classList.add('hidden');
+            document.getElementById('contributor-inbox').classList.remove('hidden');
+            
+            // Save state updates
+            const mId = parseInt(document.getElementById('editor-manuscript-id').value);
+            const mIndex = manuscripts.findIndex(item => item.id === mId);
+            if (mIndex !== -1) {
+                manuscripts[mIndex].content = currentWordContent;
+            }
+            renderContributorView();
+        }
+
+        function importDocxFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showToast("Uploading to OneDrive", "Uploading manuscript file to OneDrive Business cloud...", "success");
+
+            setTimeout(() => {
+                showToast("Upload Successful", "Document uploaded. Official Microsoft Word Online editor loaded successfully!", "success");
+                document.getElementById('msword-iframe').src = "mock_word_online.html";
+            }, 1200);
+        }
+
+        async function submitManuscript() {
+            const id = parseInt(document.getElementById('editor-manuscript-id').value);
+            const keywords = document.getElementById('editor-keywords').value;
+            const abstract = document.getElementById('editor-abstract').value;
+
+            const mIndex = manuscripts.findIndex(item => item.id === id);
+            if (mIndex !== -1) {
+                manuscripts[mIndex].keywords = keywords;
+                manuscripts[mIndex].abstract = abstract;
+                manuscripts[mIndex].content = currentWordContent;
+                manuscripts[mIndex].status = 'Submitted';
+                
+                try {
+                    await fetch('backend/api.php?action=update_metadata', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: jsonStringify({
+                            id: id,
+                            keywords: keywords,
+                            abstract: abstract,
+                            content: currentWordContent,
+                            status: 'Submitted'
+                        })
+                    });
+                } catch (e) {
+                    console.log("Mock saved status: Submitted.");
+                }
+
+                showToast("Submitted", "Manuscript submitted successfully into peer evaluation channels.", "success");
+                closeWordEditor();
+            }
+        }
+
+        function triggerReviewerAssignment(id) {
+            // Assign seed reviewer Prof. John Doe (id 3)
+            try {
+                fetch('backend/api.php?action=assign_reviewer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: jsonStringify({ manuscript_id: id, reviewer_id: 3 })
+                });
+            } catch (e) {}
+
+            const mIndex = manuscripts.findIndex(item => item.id === id);
+            if (mIndex !== -1) {
+                manuscripts[mIndex].status = 'In Review';
+            }
+            showToast("Reviewer Assigned", "Manuscript forwarded to Reviewer (Prof. John Doe).", "success");
+            renderAssociateEditorQueue();
+        }
+
+        async function submitReviewerDecision() {
+            const id = parseInt(document.getElementById('reviewer-manuscript-id').value);
+            const recommendation = document.getElementById('reviewer-recommendation').value;
+            
+            let nextStatus = 'Editorial Board';
+            if (recommendation === 'Revisions Required') nextStatus = 'Revisions Required';
+            if (recommendation === 'Reject') nextStatus = 'Rejected';
+
+            try {
+                await fetch('backend/api.php?action=submit_review', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: jsonStringify({ review_id: 1, comments: document.getElementById('reviewer-remarks').value, recommendation: recommendation })
+                });
+            } catch (e) {}
+
+            const mIndex = manuscripts.findIndex(item => item.id === id);
+            if (mIndex !== -1) {
+                manuscripts[mIndex].status = nextStatus;
+            }
+            showToast("Review Logged", `Recommendation: ${recommendation}. Status set to ${nextStatus}.`, "success");
+            document.getElementById('reviewer-document-container').classList.add('hidden');
+            renderReviewerAssignments();
+        }
+
+        function forwardManuscriptStatus(id, newStatus) {
+            try {
+                fetch('backend/api.php?action=log_pipeline_action', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: jsonStringify({ manuscript_id: id, stage: currentUser.role, action: 'Forward', Remarks: 'Forwarded to next stage.', actor_id: currentUser.id })
+                });
+            } catch (e) {}
+
+            const mIndex = manuscripts.findIndex(item => item.id === id);
+            if (mIndex !== -1) {
+                manuscripts[mIndex].status = newStatus;
+            }
+            showToast("Stage Approved", `Manuscript status updated to: ${newStatus}.`, "success");
+            renderActiveView();
+        }
+
+        function renderAuthorCommentsSidebar(m) {
+            const sidebar = document.getElementById('author-comments-sidebar');
+            sidebar.innerHTML = '';
+            
+            if (m.status === 'Revisions Required') {
+                sidebar.innerHTML = `
+                    <div class="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-bold text-rose-400 uppercase">Reviewer Suggestion</span>
+                            <span class="text-[9px] text-slate-500 font-semibold">Today</span>
+                        </div>
+                        <p class="text-xs text-slate-300">Please verify equations references and format paragraphs spacing standard.</p>
+                    </div>
+                `;
+            } else {
+                sidebar.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">No correction suggestions present.</p>`;
+            }
+        }
+
+        // Helpers
+        function getStatusBadgeColor(status) {
+            switch(status) {
+                case 'Draft': return 'bg-slate-500/10 text-slate-400 border border-slate-800';
+                case 'Submitted': return 'bg-brand-500/10 text-brand-400 border border-brand-500/20';
+                case 'In Review': return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+                case 'Editorial Board': return 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20';
+                case 'Managing Editor': return 'bg-purple-500/10 text-purple-400 border border-purple-500/20';
+                case 'Editor-In-Chief': return 'bg-pink-500/10 text-pink-400 border border-pink-500/20';
+                case 'Approved': return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+                default: return 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
+            }
+        }
+
+        function showToast(title, message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `p-4 rounded-xl border flex items-start space-x-3 shadow-2xl transition-all duration-300 max-w-sm transform translate-y-2 opacity-0 glass-card`;
+            
+            const iconColor = type === 'success' ? 'text-emerald-400' : 'text-rose-400';
+            const iconName = type === 'success' ? 'check-circle' : 'alert-circle';
+            
+            toast.innerHTML = `
+                <i data-lucide="${iconName}" class="h-5 w-5 ${iconColor} shrink-0 mt-0.5"></i>
+                <div class="space-y-1">
+                    <h4 class="text-xs font-bold text-white uppercase tracking-wider">${title}</h4>
+                    <p class="text-xs text-slate-400">${message}</p>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+            
+            // Trigger animation
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+            
+            // Auto remove
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        function jsonStringify(obj) {
+            return JSON.stringify(obj);
+        }
+    </script>
+</body>
+</html>
