@@ -144,9 +144,11 @@ class OneDriveService {
         if (!$token) return null;
 
         $url = "https://graph.microsoft.com/v1.0/me/drive/items/{$fileId}/createLink";
+        
+        // Try creating an anonymous edit link first (so public users don't need a Microsoft account)
         $data = [
             "type" => "edit",
-            "scope" => "organization" // Standard organization level sharing
+            "scope" => "anonymous"
         ];
 
         $headers = [
@@ -159,11 +161,24 @@ class OneDriveService {
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-
         $response = curl_exec($ch);
         curl_close($ch);
 
         $result = json_decode($response, true);
+        
+        // If anonymous is blocked by tenant policies, fallback to organization scope
+        if (isset($result['error'])) {
+            $data['scope'] = "organization";
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            $response = curl_exec($ch);
+            curl_close($ch);
+            $result = json_decode($response, true);
+        }
+
         if ($result && isset($result['link'])) {
             $webUrl = $result['link']['webUrl'];
             
