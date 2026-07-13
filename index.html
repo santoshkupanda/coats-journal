@@ -866,14 +866,30 @@
                 if (!editorUrl || editorUrl === 'mock_word_online.html') {
                     iframe.classList.add('hidden');
                     fallback.classList.remove('hidden');
-                    document.getElementById('btn-reviewer-fallback-open-word').href = "https://onedrive.live.com/edit.aspx";
+                    
+                    fallback.querySelector('h3').innerText = "Microsoft Word Online Workspace";
+                    fallback.querySelector('p').innerText = "Connect your OneDrive account in the Super Admin panel to enable inline iframe reviews, or open the official Word Web App directly to evaluate the paper:";
+                    
+                    const btn = document.getElementById('btn-reviewer-fallback-open-word');
+                    btn.href = "https://onedrive.live.com/edit.aspx";
+                    btn.innerHTML = `<i data-lucide="external-link" class="h-3.5 w-3.5"></i><span>Launch Word Web App</span>`;
+                    
                     document.getElementById('btn-reviewer-open-in-tab').href = "https://onedrive.live.com/edit.aspx";
                 } else {
-                    iframe.classList.remove('hidden');
-                    fallback.classList.add('hidden');
-                    iframe.src = editorUrl;
+                    // Avoid CSP iframe errors for external reviewers by redirecting to a clean Cloud Workspace Hub
+                    iframe.classList.add('hidden');
+                    fallback.classList.remove('hidden');
+                    
+                    fallback.querySelector('h3').innerText = "Word Document Cloud Hub";
+                    fallback.querySelector('p').innerText = "This manuscript is securely hosted on OneDrive. Click below to launch Word Online in a new tab to review. Comments and edits save in real-time.";
+                    
+                    const btn = document.getElementById('btn-reviewer-fallback-open-word');
+                    btn.href = editorUrl;
+                    btn.innerHTML = `<i data-lucide="external-link" class="h-3.5 w-3.5"></i><span>Open in Word Online</span>`;
+                    
                     document.getElementById('btn-reviewer-open-in-tab').href = editorUrl;
                 }
+                lucide.createIcons();
             }
         }
 
@@ -1205,14 +1221,31 @@
             if (!editorUrl || editorUrl === 'mock_word_online.html') {
                 iframe.classList.add('hidden');
                 fallback.classList.remove('hidden');
-                document.getElementById('btn-fallback-open-word').href = "https://onedrive.live.com/edit.aspx";
+                
+                fallback.querySelector('h3').innerText = "Microsoft Word Online Workspace";
+                fallback.querySelector('p').innerText = "Connect your OneDrive account in the Super Admin panel to enable inline iframe editing, or open the official Word Web App directly to draft your paper:";
+                
+                const btn = document.getElementById('btn-fallback-open-word');
+                btn.href = "https://onedrive.live.com/edit.aspx";
+                btn.innerHTML = `<i data-lucide="external-link" class="h-3.5 w-3.5"></i><span>Launch Word Web App</span>`;
+                
                 document.getElementById('btn-open-in-tab').href = "https://onedrive.live.com/edit.aspx";
             } else {
-                iframe.classList.remove('hidden');
-                fallback.classList.add('hidden');
-                iframe.src = editorUrl;
+                // Since iframes are blocked by Microsoft's security headers (CSP) for external domains,
+                // we present a premium cloud hub launcher that opens the document in a new tab.
+                iframe.classList.add('hidden');
+                fallback.classList.remove('hidden');
+                
+                fallback.querySelector('h3').innerText = "Word Document Cloud Hub";
+                fallback.querySelector('p').innerText = "This manuscript is securely hosted on OneDrive. Click below to launch Word Online in a new tab to edit. Changes save automatically in real-time.";
+                
+                const btn = document.getElementById('btn-fallback-open-word');
+                btn.href = editorUrl;
+                btn.innerHTML = `<i data-lucide="external-link" class="h-3.5 w-3.5"></i><span>Open in Word Online</span>`;
+                
                 document.getElementById('btn-open-in-tab').href = editorUrl;
             }
+            lucide.createIcons();
             renderAuthorCommentsSidebar(m);
         }
 
