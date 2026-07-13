@@ -258,8 +258,14 @@
                             <h3 id="reviewer-doc-title" class="text-sm font-semibold text-white">Manuscript Title</h3>
                             <p id="reviewer-doc-author" class="text-[10px] text-slate-400 mt-1">Author: Dr. Connor</p>
                         </div>
-                        <input type="hidden" id="reviewer-manuscript-id">
-                        <input type="hidden" id="reviewer-review-id">
+                        <div class="flex items-center space-x-3">
+                            <input type="hidden" id="reviewer-manuscript-id">
+                            <input type="hidden" id="reviewer-review-id">
+                            <a id="btn-reviewer-open-in-tab" href="#" target="_blank" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow-md shadow-brand-500/10">
+                                <i data-lucide="external-link" class="h-4 w-4"></i>
+                                <span>Open in Word App</span>
+                            </a>
+                        </div>
                     </div>
 
                     <!-- Word Online iframe -->
@@ -492,6 +498,10 @@
                 </div>
                 <div class="flex space-x-3">
                     <input type="hidden" id="editor-manuscript-id">
+                    <a id="btn-open-in-tab" href="#" target="_blank" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow-md shadow-brand-500/10">
+                        <i data-lucide="external-link" class="h-4 w-4"></i>
+                        <span>Open in Word App</span>
+                    </a>
                     <button onclick="closeWordEditor()" class="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-xl text-xs font-semibold transition">
                         Save Draft & Exit
                     </button>
@@ -857,10 +867,12 @@
                     iframe.classList.add('hidden');
                     fallback.classList.remove('hidden');
                     document.getElementById('btn-reviewer-fallback-open-word').href = "https://onedrive.live.com/edit.aspx";
+                    document.getElementById('btn-reviewer-open-in-tab').href = "https://onedrive.live.com/edit.aspx";
                 } else {
                     iframe.classList.remove('hidden');
                     fallback.classList.add('hidden');
                     iframe.src = editorUrl;
+                    document.getElementById('btn-reviewer-open-in-tab').href = editorUrl;
                 }
             }
         }
@@ -1194,10 +1206,12 @@
                 iframe.classList.add('hidden');
                 fallback.classList.remove('hidden');
                 document.getElementById('btn-fallback-open-word').href = "https://onedrive.live.com/edit.aspx";
+                document.getElementById('btn-open-in-tab').href = "https://onedrive.live.com/edit.aspx";
             } else {
                 iframe.classList.remove('hidden');
                 fallback.classList.add('hidden');
                 iframe.src = editorUrl;
+                document.getElementById('btn-open-in-tab').href = editorUrl;
             }
             renderAuthorCommentsSidebar(m);
         }
