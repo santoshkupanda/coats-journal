@@ -268,6 +268,11 @@ switch ($action) {
         $onedriveFolder = $input['onedrive_folder'] ?? 'Journal_Manuscripts';
         $redirectUri = $input['redirect_uri'] ?? '';
 
+        if (empty($redirectUri)) {
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+            $redirectUri = $protocol . $_SERVER['HTTP_HOST'] . "/backend/onedrive_callback.php";
+        }
+
         $odService->saveSetting('onedrive_client_id', $clientId);
         $odService->saveSetting('onedrive_client_secret', $clientSecret);
         $odService->saveSetting('onedrive_tenant_id', $tenantId);

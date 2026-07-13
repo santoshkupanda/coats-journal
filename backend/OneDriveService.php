@@ -30,6 +30,10 @@ class OneDriveService {
         $this->clientSecret = $settings['onedrive_client_secret'] ?? '';
         $this->tenantId = $settings['onedrive_tenant_id'] ?? '';
         $this->redirectUri = $settings['onedrive_redirect_uri'] ?? '';
+        if (empty($this->redirectUri)) {
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+            $this->redirectUri = $protocol . ($_SERVER['HTTP_HOST'] ?? 'tsj.coatskoraput.org') . "/backend/onedrive_callback.php";
+        }
     }
 
     public function isConfigured() {
