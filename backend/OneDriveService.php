@@ -165,7 +165,20 @@ class OneDriveService {
 
         $result = json_decode($response, true);
         if ($result && isset($result['link'])) {
-            return $result['link']['webUrl']; // Direct embeddable sharing link
+            $webUrl = $result['link']['webUrl'];
+            
+            // Convert standard guest sharing link to embeddable link (:w:/g/ to :w:/e/)
+            $webUrl = str_replace('/:w:/g/', '/:w:/e/', $webUrl);
+            $webUrl = str_replace('/:x:/g/', '/:x:/e/', $webUrl);
+            $webUrl = str_replace('/:p:/g/', '/:p:/e/', $webUrl);
+            
+            // Force direct inline interactive editor mode
+            if (strpos($webUrl, '?') !== false) {
+                $webUrl .= "&action=embededit";
+            } else {
+                $webUrl .= "?action=embededit";
+            }
+            return $webUrl;
         }
 
         return null;
