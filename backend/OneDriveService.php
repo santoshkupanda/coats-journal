@@ -41,7 +41,7 @@ class OneDriveService {
     }
 
     public function getAuthUrl() {
-        $scopes = urlencode("Files.ReadWrite.All offline_access");
+        $scopes = urlencode("Files.ReadWrite offline_access");
         return "https://login.microsoftonline.com/{$this->tenantId}/oauth2/v2.0/authorize?client_id={$this->clientId}&response_type=code&redirect_uri=" . urlencode($this->redirectUri) . "&response_mode=query&scope={$scopes}&state=journal_portal";
     }
 
