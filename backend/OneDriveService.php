@@ -101,9 +101,12 @@ class OneDriveService {
         $token = $this->getAccessToken();
         if (!$token) return null;
 
-        // Microsoft Graph: Put file in /Journal_Manuscripts folder
+        // Fetch custom OneDrive folder name (fallback to Journal_Manuscripts)
+        $folder = trim($this->getSetting('onedrive_folder') ?: 'Journal_Manuscripts', '/');
+
+        // Microsoft Graph: Put file in the configured folder
         $fileName = rawurlencode($title . "_" . time() . ".docx");
-        $url = "https://graph.microsoft.com/v1.0/me/drive/root:/Journal_Manuscripts/{$fileName}:/content";
+        $url = "https://graph.microsoft.com/v1.0/me/drive/root:/{$folder}/{$fileName}:/content";
         
         // Load default empty docx file structure content
         $emptyDocxBase64 = "UEsDBBQAAAAIANJkM0sAAAAAAAAAAAAAAAALAAAAd29yZC9kb2N1bWVudC54bWw=...[docx_content]";

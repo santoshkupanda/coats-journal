@@ -265,11 +265,13 @@ switch ($action) {
         $clientId = $input['client_id'] ?? '';
         $clientSecret = $input['client_secret'] ?? '';
         $tenantId = $input['tenant_id'] ?? '';
+        $onedriveFolder = $input['onedrive_folder'] ?? 'Journal_Manuscripts';
         $redirectUri = $input['redirect_uri'] ?? '';
 
         $odService->saveSetting('onedrive_client_id', $clientId);
         $odService->saveSetting('onedrive_client_secret', $clientSecret);
         $odService->saveSetting('onedrive_tenant_id', $tenantId);
+        $odService->saveSetting('onedrive_folder', $onedriveFolder);
         $odService->saveSetting('onedrive_redirect_uri', $redirectUri);
 
         echo json_encode(['status' => 'success', 'message' => 'OneDrive API credentials updated successfully.']);
@@ -282,6 +284,7 @@ switch ($action) {
                 'client_id' => $odService->getSetting('onedrive_client_id') ?? '',
                 'client_secret' => $odService->getSetting('onedrive_client_secret') ?? '',
                 'tenant_id' => $odService->getSetting('onedrive_tenant_id') ?? '',
+                'onedrive_folder' => $odService->getSetting('onedrive_folder') ?? 'Journal_Manuscripts',
                 'redirect_uri' => $odService->getSetting('onedrive_redirect_uri') ?? '',
                 'is_connected' => !empty($odService->getSetting('onedrive_access_token')),
                 'auth_url' => $odService->isConfigured() ? $odService->getAuthUrl() : ''

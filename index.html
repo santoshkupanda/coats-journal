@@ -439,6 +439,10 @@
                             <input type="password" id="admin-client-secret" placeholder="••••••••" class="w-full px-3 py-2 rounded-lg glass-input text-xs">
                         </div>
                         <div>
+                            <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">OneDrive Storage Folder</label>
+                            <input type="text" id="admin-onedrive-folder" placeholder="Journal_Manuscripts" class="w-full px-3 py-2 rounded-lg glass-input text-xs">
+                        </div>
+                        <div>
                             <label class="block text-[10px] text-slate-500 font-bold uppercase mb-1">OAuth Redirect URI</label>
                             <input type="text" id="admin-redirect-uri" placeholder="https://yourdomain.com/backend/onedrive_callback.php" class="w-full px-3 py-2 rounded-lg glass-input text-xs">
                         </div>
@@ -617,6 +621,7 @@
                     document.getElementById('admin-client-id').value = settings.client_id;
                     document.getElementById('admin-tenant-id').value = settings.tenant_id;
                     document.getElementById('admin-client-secret').value = settings.client_secret;
+                    document.getElementById('admin-onedrive-folder').value = settings.onedrive_folder || 'Journal_Manuscripts';
                     document.getElementById('admin-redirect-uri').value = settings.redirect_uri;
 
                     const badge = document.getElementById('onedrive-api-badge');
@@ -648,6 +653,7 @@
                 client_id: document.getElementById('admin-client-id').value,
                 tenant_id: document.getElementById('admin-tenant-id').value,
                 client_secret: document.getElementById('admin-client-secret').value,
+                onedrive_folder: document.getElementById('admin-onedrive-folder').value.trim() || 'Journal_Manuscripts',
                 redirect_uri: document.getElementById('admin-redirect-uri').value
             };
 
