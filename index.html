@@ -574,7 +574,7 @@
                 height: 700,
                 menubar: readOnly ? false : 'file edit view insert format tools table help',
                 plugins: readOnly ? 'preview fullscreen visualblocks visualchars wordcount help charmap' : 'preview importcss searchreplace autolink autosave save directionality code visualblocks visualchars fullscreen image link media template codesample table charmap pagebreak nonbreaking anchor insertdatetime advlist lists wordcount help charmap quickbars emoticons',
-                toolbar: readOnly ? 'fullscreen preview' : 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | numlist bullist | forecolor backcolor removeformat | pagebreak | charmap emoticons | fullscreen preview',
+                toolbar: readOnly ? 'fullscreen preview' : 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | numlist bullist | forecolor backcolor removeformat | math shapes | pagebreak | charmap emoticons | fullscreen preview',
                 content_style: `
                     body { 
                         background-color: #ffffff; 
@@ -595,6 +595,98 @@
                 skin: 'oxide-dark',
                 content_css: 'dark',
                 setup: function (editor) {
+                    // Register Math Equation button
+                    editor.ui.registry.addButton('math', {
+                        text: 'Math Equation',
+                        icon: 'science',
+                        onAction: function () {
+                            editor.windowManager.open({
+                                title: 'Insert Math Equation (LaTeX)',
+                                body: {
+                                    type: 'panel',
+                                    items: [
+                                        {
+                                            type: 'textarea',
+                                            name: 'latex',
+                                            label: 'Enter LaTeX Equation',
+                                            placeholder: 'e.g. x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}'
+                                        },
+                                        {
+                                            type: 'htmlpanel',
+                                            html: '<p style="font-size: 11px; color: #888; margin-top: 5px;">Example: <code>E = mc^2</code> or <code>\\sum_{i=1}^n i</code>. Powered by LaTeX rendering engine.</p>'
+                                        }
+                                    ]
+                                },
+                                buttons: [
+                                    {
+                                        type: 'cancel',
+                                        text: 'Cancel'
+                                    },
+                                    {
+                                        type: 'submit',
+                                        text: 'Insert',
+                                        primary: true
+                                    }
+                                ],
+                                onSubmit: function (api) {
+                                    const data = api.getData();
+                                    if (data.latex) {
+                                        const cleanLatex = encodeURIComponent(data.latex.trim());
+                                        const imgUrl = `https://latex.codecogs.com/svg.image?${cleanLatex}`;
+                                        editor.insertContent(`<img src="${imgUrl}" alt="${data.latex}" style="vertical-align: middle; margin: 4px;" />`);
+                                    }
+                                    api.close();
+                                }
+                            });
+                        }
+                    });
+
+                    // Register Shapes button
+                    editor.ui.registry.addMenuButton('shapes', {
+                        text: 'Insert Shape',
+                        icon: 'image',
+                        fetch: function (callback) {
+                            const items = [
+                                {
+                                    type: 'menuitem',
+                                    text: 'Horizontal Divider Line',
+                                    onAction: function () {
+                                        editor.insertContent('<hr style="border: none; border-top: 2px solid #0e8aee; margin: 15px 0;" />');
+                                    }
+                                },
+                                {
+                                    type: 'menuitem',
+                                    text: 'Rectangle Box',
+                                    onAction: function () {
+                                        editor.insertContent('<svg width="150" height="80" style="display:inline-block; vertical-align:middle; margin:10px;"><rect width="146" height="76" x="2" y="2" rx="5" style="fill:#e0effe;stroke:#0e8aee;stroke-width:2" /></svg>');
+                                    }
+                                },
+                                {
+                                    type: 'menuitem',
+                                    text: 'Circle Shape',
+                                    onAction: function () {
+                                        editor.insertContent('<svg width="100" height="100" style="display:inline-block; vertical-align:middle; margin:10px;"><circle cx="50" cy="50" r="46" style="fill:#e0effe;stroke:#0e8aee;stroke-width:2" /></svg>');
+                                    }
+                                },
+                                {
+                                    type: 'menuitem',
+                                    text: 'Right Block Arrow',
+                                    onAction: function () {
+                                        editor.insertContent('<svg width="120" height="40" style="display:inline-block; vertical-align:middle; margin:10px;"><path d="M 5,20 L 115,20 M 100,5 L 115,20 L 100,35" style="fill:none;stroke:#0e8aee;stroke-width:3;stroke-linecap:round;stroke-linejoin:round" /></svg>');
+                                    }
+                                },
+                                {
+                                    type: 'menuitem',
+                                    text: 'Note Text Box',
+                                    onAction: function () {
+                                        editor.insertContent('<div style="display:inline-block; border: 2px solid #0e8aee; background-color: #f0f7ff; padding: 15px; border-radius: 8px; font-family: Calibri, sans-serif; font-size: 11pt; color: #0c3e70; max-width: 250px; margin: 10px;"><strong>Note:</strong> Type your annotation text here...</div>');
+                                    }
+                                }
+                            ];
+                            callback(items);
+                        }
+                    });
+
                     editor.on('init', function () {
                         editor.setContent(initialContent || '<p>Start typing your manuscript here...</p>');
                         if (!readOnly) {
@@ -1253,35 +1345,53 @@
 
         async function submitManuscript() {
             const id = parseInt(document.getElementById('editor-manuscript-id').value);
-            const keywords = document.getElementById('editor-keywords').value;
-            const abstract = document.getElementById('editor-abstract').value;
+            const m = manuscripts.find(item => item.id === id);
+            if (!m) return;
 
-            const mIndex = manuscripts.findIndex(item => item.id === id);
-            if (mIndex !== -1) {
-                manuscripts[mIndex].keywords = keywords;
-                manuscripts[mIndex].abstract = abstract;
-                manuscripts[mIndex].content = currentWordContent;
-                manuscripts[mIndex].status = 'Submitted';
-                
-                try {
-                    await fetch('backend/api.php?action=update_metadata', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: jsonStringify({
-                            id: id,
-                            keywords: keywords,
-                            abstract: abstract,
-                            content: currentWordContent,
-                            status: 'Submitted'
-                        })
-                    });
-                } catch (e) {
-                    console.log("Mock saved status: Submitted.");
-                }
-
-                showToast("Submitted", "Manuscript submitted successfully into peer evaluation channels.", "success");
-                closeWordEditor();
+            let content = m.content;
+            if (tinymce.get('native-word-editor')) {
+                content = tinymce.get('native-word-editor').getContent();
             }
+
+            m.content = content;
+            m.status = 'Submitted';
+            
+            showToast("Submitting Manuscript", "Submitting your document for review...", "info");
+
+            try {
+                const response = await fetch('backend/api.php?action=update_metadata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: id,
+                        keywords: m.keywords || '',
+                        abstract: m.abstract || '',
+                        content: content,
+                        status: 'Submitted'
+                    })
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showToast("Submitted Successfully", "Manuscript submitted successfully into peer evaluation channels.", "success");
+                    if (tinymce.get('native-word-editor')) {
+                        tinymce.get('native-word-editor').destroy();
+                    }
+                    document.getElementById('word-editor-container').classList.add('hidden');
+                    document.getElementById('contributor-inbox').classList.remove('hidden');
+                } else {
+                    showToast("Submission Error", result.message || "Failed to submit.", "error");
+                }
+            } catch (err) {
+                console.warn(err);
+                showToast("Submission Offline", "Internet sync delay. Saved in browser cache.", "warning");
+                if (tinymce.get('native-word-editor')) {
+                    tinymce.get('native-word-editor').destroy();
+                }
+                document.getElementById('word-editor-container').classList.add('hidden');
+                document.getElementById('contributor-inbox').classList.remove('hidden');
+            }
+
+            renderContributorView();
         }
 
         function triggerReviewerAssignment(id) {
