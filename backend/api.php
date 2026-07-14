@@ -151,7 +151,7 @@ switch ($action) {
         $keywords = $input['keywords'] ?? '';
         $abstract = $input['abstract'] ?? '';
         $content = $input['content'] ?? '';
-        $status = $input['status'] ?? 'Submitted';
+        $status = $input['status'] ?? 'Draft';
 
         if (!$id) {
             echo json_encode(['status' => 'error', 'message' => 'Manuscript ID required.']);
@@ -160,6 +160,17 @@ switch ($action) {
 
         $stmt = $db->prepare("UPDATE manuscripts SET keywords = ?, abstract = ?, content = ?, status = ? WHERE id = ?");
         $stmt->execute([$keywords, $abstract, $content, $status, $id]);
+
+        // Update OneDrive document in the background if configured
+        if ($odService->isConfigured()) {
+            $stmt = $db->prepare("SELECT onedrive_file_id FROM manuscripts WHERE id = ?");
+            $stmt->execute([$id]);
+            $fileId = $stmt->fetchColumn();
+            if (!empty($fileId)) {
+                $odService->updateManuscriptFileContent($fileId, $content);
+            }
+        }
+
         echo json_encode(['status' => 'success', 'message' => 'Manuscript updated successfully.']);
         break;
 

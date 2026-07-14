@@ -243,9 +243,138 @@ class OneDriveService {
         return $stmt->fetchColumn() ?: null;
     }
 
-    public function saveSetting($key, $value) {
-        $stmt = $this->db->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
-        $stmt->execute([$key, $value, $value]);
+    public function updateManuscriptFileContent($fileId, $htmlContent) {
+        if (empty($fileId)) return false;
+        
+        $token = $this->getAccessToken();
+        if (!$token) return false;
+
+        $docxBinary = $this->htmlToDocx($htmlContent);
+        if (!$docxBinary) return false;
+
+        $url = "https://graph.microsoft.com/v1.0/me/drive/items/{$fileId}/content";
+        $headers = [
+            "Authorization: Bearer {$token}",
+            "Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $docxBinary);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        return ($httpCode === 200 || $httpCode === 204);
+    }
+
+    private function htmlToDocx($html) {
+        // Strip tags we don't want, clean up whitespace
+        $html = str_replace(["\r", "\n"], "", $html);
+        
+        $wml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+        $wml .= '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">';
+        $wml .= '<w:body>';
+        
+        $tokens = preg_split('/(<[^>]+>)/', $html, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+        
+        $inParagraph = false;
+        $inBold = false;
+        $inItalic = false;
+        $runs = [];
+        
+        foreach ($tokens as $token) {
+            if (strpos($token, '<') === 0) {
+                $tag = strtolower(trim($token, '<>'));
+                if ($tag === 'p' || $tag === 'h1' || $tag === 'h2' || $tag === 'h3' || $tag === 'div') {
+                    if ($inParagraph) {
+                        $wml .= $this->buildParagraphWml($runs);
+                        $runs = [];
+                    }
+                    $inParagraph = true;
+                } elseif ($tag === '/p' || $tag === '/h1' || $tag === '/h2' || $tag === '/h3' || $tag === '/div') {
+                    if ($inParagraph) {
+                        $wml .= $this->buildParagraphWml($runs);
+                        $runs = [];
+                        $inParagraph = false;
+                    }
+                } elseif ($tag === 'b' || $tag === 'strong') {
+                    $inBold = true;
+                } elseif ($tag === '/b' || $tag === '/strong') {
+                    $inBold = false;
+                } elseif ($tag === 'i' || $tag === 'em') {
+                    $inItalic = true;
+                } elseif ($tag === '/i' || $tag === '/em') {
+                    $inItalic = false;
+                } elseif ($tag === 'br') {
+                    $runs[] = ['type' => 'break'];
+                }
+            } else {
+                if (!$inParagraph) {
+                    $inParagraph = true;
+                }
+                $runs[] = [
+                    'type' => 'text',
+                    'text' => htmlspecialchars($token, ENT_XML1, 'UTF-8'),
+                    'bold' => $inBold,
+                    'italic' => $inItalic
+                ];
+            }
+        }
+        
+        if ($inParagraph && !empty($runs)) {
+            $wml .= $this->buildParagraphWml($runs);
+        }
+        
+        $wml .= '</w:body>';
+        $wml .= '</w:document>';
+        
+        if (!class_exists('ZipArchive')) {
+            // If ZipArchive is missing, fallback to returning the XML body (Word will open it as single file XML docx in desktop)
+            return $wml;
+        }
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'docx');
+        $zip = new ZipArchive();
+        if ($zip->open($tempFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+            $content_types = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>';
+            $rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>';
+            
+            $zip->addFromString('[Content_Types].xml', $content_types);
+            $zip->addFromString('_rels/.rels', $rels);
+            $zip->addFromString('word/document.xml', $wml);
+            $zip->close();
+            
+            $binary = file_get_contents($tempFile);
+            unlink($tempFile);
+            return $binary;
+        }
+        
+        return $wml;
+    }
+    
+    private function buildParagraphWml($runs) {
+        $para = '<w:p>';
+        foreach ($runs as $run) {
+            if ($run['type'] === 'break') {
+                $para .= '<w:r><w:br/></w:r>';
+            } else {
+                $para .= '<w:r>';
+                if ($run['bold'] || $run['italic']) {
+                    $para .= '<w:rPr>';
+                    if ($run['bold']) $para .= '<w:b/>';
+                    if ($run['italic']) $para .= '<w:i/>';
+                    $para .= '</w:rPr>';
+                }
+                $para .= '<w:t>' . $run['text'] . '</w:t>';
+                $para .= '</w:r>';
+            }
+        }
+        $para .= '</w:p>';
+        return $para;
     }
 }
 ?>

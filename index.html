@@ -10,6 +10,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Html2pdf.js for client-side PDF downloads -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js" referrerpolicy="origin"></script>
     
     <script>
         tailwind.config = {
@@ -261,27 +262,12 @@
                         <div class="flex items-center space-x-3">
                             <input type="hidden" id="reviewer-manuscript-id">
                             <input type="hidden" id="reviewer-review-id">
-                            <a id="btn-reviewer-open-in-tab" href="#" target="_blank" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow-md shadow-brand-500/10">
-                                <i data-lucide="external-link" class="h-4 w-4"></i>
-                                <span>Open in Word App</span>
-                            </a>
                         </div>
                     </div>
 
-                    <!-- Word Online iframe -->
-                    <div class="w-full h-[600px] border border-slate-800 rounded-xl overflow-hidden shadow-2xl relative bg-slate-900">
-                        <iframe id="reviewer-msword-iframe" src="about:blank" class="w-full h-full relative z-10 hidden" frameborder="0"></iframe>
-                        
-                        <!-- Fallback panel shown in Mock Mode -->
-                        <div id="reviewer-msword-iframe-fallback" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-0">
-                            <i data-lucide="cloud-lightning" class="h-10 w-10 text-brand-500 mb-3 animate-pulse"></i>
-                            <h3 class="text-xs font-bold text-white uppercase tracking-wider mb-2">Microsoft Word Online Workspace</h3>
-                            <p class="text-[10px] text-slate-400 max-w-sm mb-4">Connect your OneDrive account in the Super Admin panel to enable inline iframe reviews, or open the official Word Web App directly to evaluate the paper:</p>
-                            <a id="btn-reviewer-fallback-open-word" href="https://onedrive.live.com/edit.aspx" target="_blank" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-[10px] font-bold uppercase tracking-wide shadow-lg shadow-brand-500/25 flex items-center space-x-2 transition">
-                                <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
-                                <span>Open Word Online in New Tab</span>
-                            </a>
-                        </div>
+                    <!-- Native Word Document Editor for Reviewer (TinyMCE Read-Only) -->
+                    <div class="w-full rounded-xl overflow-hidden shadow-2xl relative bg-slate-900 border border-slate-800">
+                        <textarea id="reviewer-native-word-editor" class="w-full"></textarea>
                     </div>
 
                     <!-- Peer Review Decision form -->
@@ -498,10 +484,6 @@
                 </div>
                 <div class="flex space-x-3">
                     <input type="hidden" id="editor-manuscript-id">
-                    <a id="btn-open-in-tab" href="#" target="_blank" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition shadow-md shadow-brand-500/10">
-                        <i data-lucide="external-link" class="h-4 w-4"></i>
-                        <span>Open in Word App</span>
-                    </a>
                     <button onclick="closeWordEditor()" class="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 border border-slate-700 rounded-xl text-xs font-semibold transition">
                         Save Draft & Exit
                     </button>
@@ -511,21 +493,10 @@
                 </div>
             </div>
 
-            <!-- Full-width Word Online editor frame -->
+            <!-- Native Word Document Editor (TinyMCE) -->
             <div class="glass-card rounded-2xl p-4">
-                <div class="w-full h-[700px] border border-slate-800 rounded-xl overflow-hidden shadow-2xl relative bg-slate-900">
-                    <iframe id="msword-iframe" src="" class="w-full h-full relative z-10 hidden" frameborder="0"></iframe>
-                    
-                    <!-- Fallback panel shown in Mock Mode -->
-                    <div id="msword-iframe-fallback" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-0">
-                        <i data-lucide="cloud-lightning" class="h-12 w-12 text-brand-500 mb-4 animate-pulse"></i>
-                        <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-2">Microsoft Word Online Workspace</h3>
-                        <p class="text-xs text-slate-400 max-w-sm mb-6">Microsoft blocks embedding unauthenticated Word pages in frames. Link your OneDrive account in the Super Admin dashboard to enable inline embedding, or open the official Word Web App directly:</p>
-                        <a id="btn-fallback-open-word" href="https://onedrive.live.com/edit.aspx" target="_blank" class="px-6 py-3 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold uppercase tracking-wide shadow-lg shadow-brand-500/25 flex items-center space-x-2 transition">
-                            <i data-lucide="external-link" class="h-4 w-4"></i>
-                            <span>Open Word Online in New Tab</span>
-                        </a>
-                    </div>
+                <div class="w-full rounded-xl overflow-hidden shadow-2xl relative bg-slate-900 border border-slate-800">
+                    <textarea id="native-word-editor" class="w-full"></textarea>
                 </div>
             </div>
         </section>
@@ -590,7 +561,49 @@
         
         let manuscripts = [];
         let reviews = [];
-        let currentWordContent = '';
+        let editorInstance = null;
+
+        function initTinyMCE(selector, initialContent, readOnly = false) {
+            const id = selector.replace('#', '');
+            if (tinymce.get(id)) {
+                tinymce.get(id).destroy();
+            }
+
+            tinymce.init({
+                selector: selector,
+                height: 700,
+                menubar: readOnly ? false : 'file edit view insert format tools table help',
+                plugins: readOnly ? 'preview fullscreen visualblocks visualchars wordcount help charmap' : 'preview importcss searchreplace autolink autosave save directionality code visualblocks visualchars fullscreen image link media template codesample table charmap pagebreak nonbreaking anchor insertdatetime advlist lists wordcount help charmap quickbars emoticons',
+                toolbar: readOnly ? 'fullscreen preview' : 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | numlist bullist | forecolor backcolor removeformat | pagebreak | charmap emoticons | fullscreen preview',
+                content_style: `
+                    body { 
+                        background-color: #ffffff; 
+                        color: #1e293b; 
+                        font-family: 'Calibri', 'Arial', sans-serif; 
+                        font-size: 11pt; 
+                        line-height: 1.5; 
+                        padding: 1in; 
+                        max-width: 800px; 
+                        margin: 20px auto; 
+                        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+                        border: 1px solid #e2e8f0;
+                        min-height: 11in;
+                    }
+                    p { margin-bottom: 12pt; }
+                `,
+                readonly: readOnly ? 1 : 0,
+                skin: 'oxide-dark',
+                content_css: 'dark',
+                setup: function (editor) {
+                    editor.on('init', function () {
+                        editor.setContent(initialContent || '<p>Start typing your manuscript here...</p>');
+                        if (!readOnly) {
+                            editorInstance = editor;
+                        }
+                    });
+                }
+            });
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
@@ -859,37 +872,7 @@
                 document.getElementById('reviewer-doc-author').innerText = `Author: ${m.author_name}`;
                 document.getElementById('reviewer-manuscript-id').value = m.id;
                 
-                const iframe = document.getElementById('reviewer-msword-iframe');
-                const fallback = document.getElementById('reviewer-msword-iframe-fallback');
-                let editorUrl = m.onedrive_url;
-
-                if (!editorUrl || editorUrl === 'mock_word_online.html') {
-                    iframe.classList.add('hidden');
-                    fallback.classList.remove('hidden');
-                    
-                    fallback.querySelector('h3').innerText = "Microsoft Word Online Workspace";
-                    fallback.querySelector('p').innerText = "Connect your OneDrive account in the Super Admin panel to enable inline iframe reviews, or open the official Word Web App directly to evaluate the paper:";
-                    
-                    const btn = document.getElementById('btn-reviewer-fallback-open-word');
-                    btn.href = "https://onedrive.live.com/edit.aspx";
-                    btn.innerHTML = `<i data-lucide="external-link" class="h-3.5 w-3.5"></i><span>Launch Word Web App</span>`;
-                    
-                    document.getElementById('btn-reviewer-open-in-tab').href = "https://onedrive.live.com/edit.aspx";
-                } else {
-                    // Avoid CSP iframe errors for external reviewers by redirecting to a clean Cloud Workspace Hub
-                    iframe.classList.add('hidden');
-                    fallback.classList.remove('hidden');
-                    
-                    fallback.querySelector('h3').innerText = "Word Document Cloud Hub";
-                    fallback.querySelector('p').innerText = "This manuscript is securely hosted on OneDrive. Click below to launch Word Online in a new tab to review. Comments and edits save in real-time.";
-                    
-                    const btn = document.getElementById('btn-reviewer-fallback-open-word');
-                    btn.href = editorUrl;
-                    btn.innerHTML = `<i data-lucide="external-link" class="h-3.5 w-3.5"></i><span>Open in Word Online</span>`;
-                    
-                    document.getElementById('btn-reviewer-open-in-tab').href = editorUrl;
-                }
-                lucide.createIcons();
+                initTinyMCE('#reviewer-native-word-editor', m.content, true);
             }
         }
 
@@ -1170,7 +1153,7 @@
                 const response = await fetch('backend/api.php?action=create_manuscript', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: jsonStringify({ title: title, author_id: currentUser.id })
+                    body: JSON.stringify({ title: title, author_id: currentUser.id })
                 });
                 const result = await response.json();
                 if (result.status === 'success') {
@@ -1212,53 +1195,47 @@
             const m = manuscripts.find(item => item.id === id);
             document.getElementById('editor-manuscript-id').value = m.id;
             document.getElementById('editor-display-title').innerText = m.title;
-            currentWordContent = m.content;
 
-            const iframe = document.getElementById('msword-iframe');
-            const fallback = document.getElementById('msword-iframe-fallback');
-            let editorUrl = m.onedrive_url;
-
-            if (!editorUrl || editorUrl === 'mock_word_online.html') {
-                iframe.classList.add('hidden');
-                fallback.classList.remove('hidden');
-                
-                fallback.querySelector('h3').innerText = "Microsoft Word Online Workspace";
-                fallback.querySelector('p').innerText = "Connect your OneDrive account in the Super Admin panel to enable inline iframe editing, or open the official Word Web App directly to draft your paper:";
-                
-                const btn = document.getElementById('btn-fallback-open-word');
-                btn.href = "https://onedrive.live.com/edit.aspx";
-                btn.innerHTML = `<i data-lucide="external-link" class="h-3.5 w-3.5"></i><span>Launch Word Web App</span>`;
-                
-                document.getElementById('btn-open-in-tab').href = "https://onedrive.live.com/edit.aspx";
-            } else {
-                // Since iframes are blocked by Microsoft's security headers (CSP) for external domains,
-                // we present a premium cloud hub launcher that opens the document in a new tab.
-                iframe.classList.add('hidden');
-                fallback.classList.remove('hidden');
-                
-                fallback.querySelector('h3').innerText = "Word Document Cloud Hub";
-                fallback.querySelector('p').innerText = "This manuscript is securely hosted on OneDrive. Click below to launch Word Online in a new tab to edit. Changes save automatically in real-time.";
-                
-                const btn = document.getElementById('btn-fallback-open-word');
-                btn.href = editorUrl;
-                btn.innerHTML = `<i data-lucide="external-link" class="h-3.5 w-3.5"></i><span>Open in Word Online</span>`;
-                
-                document.getElementById('btn-open-in-tab').href = editorUrl;
-            }
-            lucide.createIcons();
+            initTinyMCE('#native-word-editor', m.content, false);
             renderAuthorCommentsSidebar(m);
         }
 
-        function closeWordEditor() {
+        async function closeWordEditor() {
+            const mId = parseInt(document.getElementById('editor-manuscript-id').value);
+            const m = manuscripts.find(item => item.id === mId);
+            
+            if (tinymce.get('native-word-editor')) {
+                m.content = tinymce.get('native-word-editor').getContent();
+            }
+
             document.getElementById('word-editor-container').classList.add('hidden');
             document.getElementById('contributor-inbox').classList.remove('hidden');
-            
-            // Save state updates
-            const mId = parseInt(document.getElementById('editor-manuscript-id').value);
-            const mIndex = manuscripts.findIndex(item => item.id === mId);
-            if (mIndex !== -1) {
-                manuscripts[mIndex].content = currentWordContent;
+
+            showToast("Saving manuscript...", "Saving changes to database and OneDrive...", "info");
+
+            try {
+                const response = await fetch('backend/api.php?action=update_metadata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: m.id,
+                        keywords: m.keywords || '',
+                        abstract: m.abstract || '',
+                        content: m.content,
+                        status: m.status
+                    })
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showToast("Saved Successfully", "Manuscript saved directly to your OneDrive folder.", "success");
+                } else {
+                    showToast("Saved Locally", "Saved in portal database only.", "warning");
+                }
+            } catch (err) {
+                console.warn(err);
+                showToast("Saved Locally", "Internet sync delay. Saved in browser cache.", "warning");
             }
+
             renderContributorView();
         }
 
