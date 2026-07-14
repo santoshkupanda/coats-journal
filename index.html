@@ -964,7 +964,7 @@
                 document.getElementById('reviewer-doc-author').innerText = `Author: ${m.author_name}`;
                 document.getElementById('reviewer-manuscript-id').value = m.id;
                 
-                initTinyMCE('#reviewer-native-word-editor', m.content, true);
+                initTinyMCE('#reviewer-native-word-editor', m.content, false);
             }
         }
 
@@ -1414,25 +1414,61 @@
 
         async function submitReviewerDecision() {
             const id = parseInt(document.getElementById('reviewer-manuscript-id').value);
+            const m = manuscripts.find(item => item.id === id);
+            if (!m) return;
+
             const recommendation = document.getElementById('reviewer-recommendation').value;
             
             let nextStatus = 'Editorial Board';
             if (recommendation === 'Revisions Required') nextStatus = 'Revisions Required';
             if (recommendation === 'Reject') nextStatus = 'Rejected';
 
+            // Get edited content from TinyMCE reviewer editor
+            let content = m.content;
+            if (tinymce.get('reviewer-native-word-editor')) {
+                content = tinymce.get('reviewer-native-word-editor').getContent();
+            }
+            m.content = content;
+            m.status = nextStatus;
+
+            showToast("Submitting Review", "Saving annotations and decision...", "info");
+
             try {
+                // First save the updated content (comments/corrections inside the doc)
+                await fetch('backend/api.php?action=update_metadata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: id,
+                        keywords: m.keywords || '',
+                        abstract: m.abstract || '',
+                        content: content,
+                        status: nextStatus
+                    })
+                });
+
+                // Next log the review decision recommendation
                 await fetch('backend/api.php?action=submit_review', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: jsonStringify({ review_id: 1, comments: document.getElementById('reviewer-remarks').value, recommendation: recommendation })
+                    body: JSON.stringify({ 
+                        review_id: 1, 
+                        comments: document.getElementById('reviewer-remarks').value, 
+                        recommendation: recommendation 
+                    })
                 });
-            } catch (e) {}
-
-            const mIndex = manuscripts.findIndex(item => item.id === id);
-            if (mIndex !== -1) {
-                manuscripts[mIndex].status = nextStatus;
+                
+                showToast("Review Logged", `Recommendation: ${recommendation}. Status set to ${nextStatus}.`, "success");
+            } catch (e) {
+                console.warn(e);
+                showToast("Saved Locally", "Saved in local browser cache.", "warning");
             }
-            showToast("Review Logged", `Recommendation: ${recommendation}. Status set to ${nextStatus}.`, "success");
+
+            // Cleanup editor
+            if (tinymce.get('reviewer-native-word-editor')) {
+                tinymce.get('reviewer-native-word-editor').destroy();
+            }
+
             document.getElementById('reviewer-document-container').classList.add('hidden');
             renderReviewerAssignments();
         }
