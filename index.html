@@ -573,7 +573,7 @@
             if (readOnly) {
                 toolbarConfig = 'fullscreen preview';
             } else if (isReviewer) {
-                toolbarConfig = 'undo redo | bold italic underline | forecolor backcolor removeformat | comment';
+                toolbarConfig = 'undo redo | comment';
             }
 
             tinymce.init({
@@ -597,17 +597,93 @@
                         min-height: 11in;
                     }
                     p { margin-bottom: 12pt; }
+                    .comment-highlight {
+                        background-color: #fef08a !important;
+                        color: #1e293b !important;
+                        border-bottom: 2px dashed #ca8a04 !important;
+                        cursor: help !important;
+                        padding: 2px 0;
+                        transition: background-color 0.2s ease;
+                    }
+                    .comment-highlight:hover {
+                        background-color: #fde047 !important;
+                    }
                 `,
                 readonly: readOnly ? 1 : 0,
                 skin: 'oxide-dark',
                 content_css: 'dark',
                 setup: function (editor) {
-                    // Register Comment Card button
+                    // Prevent edits if isReviewer is true, but allow selections and toolbar comment button clicks
+                    if (isReviewer) {
+                        editor.on('keydown', function (e) {
+                            const isCopy = (e.ctrlKey || e.metaKey) && e.key === 'c';
+                            const isArrow = e.key.startsWith('Arrow');
+                            const isSelectAll = (e.ctrlKey || e.metaKey) && e.key === 'a';
+                            
+                            if (!isCopy && !isArrow && !isSelectAll) {
+                                e.preventDefault();
+                                return false;
+                            }
+                        });
+                        editor.on('paste', function (e) {
+                            e.preventDefault();
+                            return false;
+                        });
+                        editor.on('cut', function (e) {
+                            e.preventDefault();
+                            return false;
+                        });
+                    }
+
+                    // Register selection-based Comment button
                     editor.ui.registry.addButton('comment', {
-                        text: 'Add Comment Card',
+                        text: 'Add Comment',
                         icon: 'comment',
                         onAction: function () {
-                            editor.insertContent('<div style="display:block; border: 2px solid #ea580c; background-color: #fff7ed; padding: 12px; border-radius: 8px; font-family: Calibri, sans-serif; font-size: 10pt; color: #7c2d12; margin: 10px 0; width: 100%;"><strong>Reviewer Comment:</strong> Enter your annotation here...</div>');
+                            const selectedText = editor.selection.getContent({ format: 'text' });
+                            if (!selectedText || selectedText.trim() === "") {
+                                editor.windowManager.alert('Please select a portion of the manuscript text first to assign a comment.');
+                                return;
+                            }
+                            
+                            editor.windowManager.open({
+                                title: 'Add Reviewer Comment',
+                                body: {
+                                    type: 'panel',
+                                    items: [
+                                        {
+                                            type: 'htmlpanel',
+                                            html: `<p style="font-size:11px; margin-bottom:8px; color:#555;">Selected Range: <strong style="color:#0f172a;">"${selectedText.substring(0, 100)}${selectedText.length > 100 ? '...' : ''}"</strong></p>`
+                                        },
+                                        {
+                                            type: 'textarea',
+                                            name: 'commentText',
+                                            label: 'Your Assessment Comment',
+                                            placeholder: 'Type your feedback suggestion for the author...'
+                                        }
+                                    ]
+                                },
+                                buttons: [
+                                    {
+                                        type: 'cancel',
+                                        text: 'Cancel'
+                                    },
+                                    {
+                                        type: 'submit',
+                                        text: 'Submit Comment',
+                                        primary: true
+                                    }
+                                ],
+                                onSubmit: function (api) {
+                                    const data = api.getData();
+                                    if (data.commentText) {
+                                        const cleanText = data.commentText.trim().replace(/"/g, '&quot;');
+                                        const wrappedHtml = `<span class="comment-highlight" title="[Reviewer Comment] ${cleanText}">${selectedText}</span>`;
+                                        editor.insertContent(wrappedHtml);
+                                    }
+                                    api.close();
+                                }
+                            });
                         }
                     });
                     // Register Math Equation button
