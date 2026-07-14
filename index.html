@@ -582,7 +582,7 @@
                 menubar: readOnly || isReviewer ? false : 'file edit view insert format tools table help',
                 plugins: readOnly || isReviewer ? 'preview fullscreen visualblocks visualchars wordcount help charmap' : 'preview importcss searchreplace autolink autosave save directionality code visualblocks visualchars fullscreen image link media template codesample table charmap pagebreak nonbreaking anchor insertdatetime advlist lists wordcount help charmap quickbars emoticons',
                 toolbar: toolbarConfig,
-                contextmenu: 'link image table resolvecomment',
+                contextmenu: 'link image table resolvecomment unresolvecomment acceptcomment',
                 content_style: `
                     body { 
                         background-color: #ffffff; 
@@ -608,6 +608,17 @@
                     }
                     .comment-highlight:hover {
                         background-color: #fde047 !important;
+                    }
+                    .comment-resolved {
+                        background-color: #d1fae5 !important;
+                        color: #065f46 !important;
+                        border-bottom: 2px solid #10b981 !important;
+                        cursor: help !important;
+                        padding: 2px 0;
+                        transition: background-color 0.2s ease;
+                    }
+                    .comment-resolved:hover {
+                        background-color: #a7f3d0 !important;
                     }
                 `,
                 readonly: readOnly ? 1 : 0,
@@ -695,26 +706,74 @@
                             const node = editor.selection.getNode();
                             const highlightNode = editor.dom.getParent(node, '.comment-highlight');
                             if (highlightNode) {
-                                editor.dom.remove(highlightNode, true); // true unwraps keeping content
+                                highlightNode.className = 'comment-resolved';
+                                const originalTitle = highlightNode.getAttribute('title') || '';
+                                if (!originalTitle.startsWith('[Resolved]')) {
+                                    highlightNode.setAttribute('title', '[Resolved] ' + originalTitle);
+                                }
+                                highlightNode.style.backgroundColor = '#d1fae5';
+                                highlightNode.style.color = '#065f46';
+                                highlightNode.style.borderBottom = '2px solid #10b981';
                                 editor.nodeChanged();
-                                showToast("Comment Resolved", "Highlight removed from document.", "success");
+                                showToast("Comment Resolved", "Highlight marked as resolved (green).", "success");
                             } else {
                                 editor.windowManager.alert('Please place your cursor inside a highlighted comment to resolve it.');
                             }
                         }
                     });
 
-                    // Register right-click context menu item
+                    // Register right-click context menu items for authors and reviewers
                     editor.ui.registry.addMenuItem('resolvecomment', {
-                        text: 'Resolve & Remove Comment Highlight',
+                        text: 'Resolve Comment Highlight (Mark Fixed)',
                         icon: 'remove',
                         onAction: function () {
                             const node = editor.selection.getNode();
                             const highlightNode = editor.dom.getParent(node, '.comment-highlight');
                             if (highlightNode) {
+                                highlightNode.className = 'comment-resolved';
+                                const originalTitle = highlightNode.getAttribute('title') || '';
+                                if (!originalTitle.startsWith('[Resolved]')) {
+                                    highlightNode.setAttribute('title', '[Resolved] ' + originalTitle);
+                                }
+                                highlightNode.style.backgroundColor = '#d1fae5';
+                                highlightNode.style.color = '#065f46';
+                                highlightNode.style.borderBottom = '2px solid #10b981';
+                                editor.nodeChanged();
+                                showToast("Comment Resolved", "Highlight marked as resolved (green).", "success");
+                            }
+                        }
+                    });
+
+                    editor.ui.registry.addMenuItem('unresolvecomment', {
+                        text: 'Re-open Comment (Mark Unresolved)',
+                        icon: 'undo',
+                        onAction: function () {
+                            const node = editor.selection.getNode();
+                            const highlightNode = editor.dom.getParent(node, '.comment-resolved');
+                            if (highlightNode) {
+                                highlightNode.className = 'comment-highlight';
+                                let title = highlightNode.getAttribute('title') || '';
+                                title = title.replace('[Resolved] ', '');
+                                highlightNode.setAttribute('title', title);
+                                highlightNode.style.backgroundColor = '#fef08a';
+                                highlightNode.style.color = '#1e293b';
+                                highlightNode.style.borderBottom = '2px dashed #ca8a04';
+                                editor.nodeChanged();
+                                showToast("Comment Re-opened", "Marked comment as unresolved (yellow).", "info");
+                            }
+                        }
+                    });
+
+                    editor.ui.registry.addMenuItem('acceptcomment', {
+                        text: 'Accept Correction (Clear Highlight)',
+                        icon: 'checkmark',
+                        onAction: function () {
+                            const node = editor.selection.getNode();
+                            const highlightNode = editor.dom.getParent(node, '.comment-resolved');
+                            if (highlightNode) {
                                 editor.dom.remove(highlightNode, true);
                                 editor.nodeChanged();
-                                showToast("Comment Resolved", "Highlight removed from document.", "success");
+                                showToast("Correction Accepted", "Highlight cleared from document.", "success");
                             }
                         }
                     });
