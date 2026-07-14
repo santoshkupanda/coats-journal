@@ -563,18 +563,25 @@
         let reviews = [];
         let editorInstance = null;
 
-        function initTinyMCE(selector, initialContent, readOnly = false) {
+        function initTinyMCE(selector, initialContent, readOnly = false, isReviewer = false) {
             const id = selector.replace('#', '');
             if (tinymce.get(id)) {
                 tinymce.get(id).destroy();
             }
 
+            let toolbarConfig = 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | numlist bullist | forecolor backcolor removeformat | math shapes | pagebreak | charmap emoticons | fullscreen preview';
+            if (readOnly) {
+                toolbarConfig = 'fullscreen preview';
+            } else if (isReviewer) {
+                toolbarConfig = 'undo redo | bold italic underline | forecolor backcolor removeformat | comment';
+            }
+
             tinymce.init({
                 selector: selector,
                 height: 700,
-                menubar: readOnly ? false : 'file edit view insert format tools table help',
-                plugins: readOnly ? 'preview fullscreen visualblocks visualchars wordcount help charmap' : 'preview importcss searchreplace autolink autosave save directionality code visualblocks visualchars fullscreen image link media template codesample table charmap pagebreak nonbreaking anchor insertdatetime advlist lists wordcount help charmap quickbars emoticons',
-                toolbar: readOnly ? 'fullscreen preview' : 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | numlist bullist | forecolor backcolor removeformat | math shapes | pagebreak | charmap emoticons | fullscreen preview',
+                menubar: readOnly || isReviewer ? false : 'file edit view insert format tools table help',
+                plugins: readOnly || isReviewer ? 'preview fullscreen visualblocks visualchars wordcount help charmap' : 'preview importcss searchreplace autolink autosave save directionality code visualblocks visualchars fullscreen image link media template codesample table charmap pagebreak nonbreaking anchor insertdatetime advlist lists wordcount help charmap quickbars emoticons',
+                toolbar: toolbarConfig,
                 content_style: `
                     body { 
                         background-color: #ffffff; 
@@ -595,6 +602,14 @@
                 skin: 'oxide-dark',
                 content_css: 'dark',
                 setup: function (editor) {
+                    // Register Comment Card button
+                    editor.ui.registry.addButton('comment', {
+                        text: 'Add Comment Card',
+                        icon: 'comment',
+                        onAction: function () {
+                            editor.insertContent('<div style="display:block; border: 2px solid #ea580c; background-color: #fff7ed; padding: 12px; border-radius: 8px; font-family: Calibri, sans-serif; font-size: 10pt; color: #7c2d12; margin: 10px 0; width: 100%;"><strong>Reviewer Comment:</strong> Enter your annotation here...</div>');
+                        }
+                    });
                     // Register Math Equation button
                     editor.ui.registry.addButton('math', {
                         text: 'Math Equation',
@@ -964,7 +979,7 @@
                 document.getElementById('reviewer-doc-author').innerText = `Author: ${m.author_name}`;
                 document.getElementById('reviewer-manuscript-id').value = m.id;
                 
-                initTinyMCE('#reviewer-native-word-editor', m.content, false);
+                initTinyMCE('#reviewer-native-word-editor', m.content, false, true);
             }
         }
 
