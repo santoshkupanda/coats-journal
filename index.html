@@ -569,7 +569,7 @@
                 tinymce.get(id).destroy();
             }
 
-            let toolbarConfig = 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | numlist bullist | forecolor backcolor removeformat | math shapes | pagebreak | charmap emoticons | fullscreen preview';
+            let toolbarConfig = 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | numlist bullist | forecolor backcolor removeformat | math shapes resolvecomment | pagebreak | charmap emoticons | fullscreen preview';
             if (readOnly) {
                 toolbarConfig = 'fullscreen preview';
             } else if (isReviewer) {
@@ -582,6 +582,7 @@
                 menubar: readOnly || isReviewer ? false : 'file edit view insert format tools table help',
                 plugins: readOnly || isReviewer ? 'preview fullscreen visualblocks visualchars wordcount help charmap' : 'preview importcss searchreplace autolink autosave save directionality code visualblocks visualchars fullscreen image link media template codesample table charmap pagebreak nonbreaking anchor insertdatetime advlist lists wordcount help charmap quickbars emoticons',
                 toolbar: toolbarConfig,
+                contextmenu: 'link image table resolvecomment',
                 content_style: `
                     body { 
                         background-color: #ffffff; 
@@ -684,8 +685,40 @@
                                     api.close();
                                 }
                             });
+                    });
+
+                    // Register Resolve Comment button
+                    editor.ui.registry.addButton('resolvecomment', {
+                        text: 'Resolve Comment',
+                        icon: 'remove',
+                        onAction: function () {
+                            const node = editor.selection.getNode();
+                            const highlightNode = editor.dom.getParent(node, '.comment-highlight');
+                            if (highlightNode) {
+                                editor.dom.remove(highlightNode, true); // true unwraps keeping content
+                                editor.nodeChanged();
+                                showToast("Comment Resolved", "Highlight removed from document.", "success");
+                            } else {
+                                editor.windowManager.alert('Please place your cursor inside a highlighted comment to resolve it.');
+                            }
                         }
                     });
+
+                    // Register right-click context menu item
+                    editor.ui.registry.addMenuItem('resolvecomment', {
+                        text: 'Resolve & Remove Comment Highlight',
+                        icon: 'remove',
+                        onAction: function () {
+                            const node = editor.selection.getNode();
+                            const highlightNode = editor.dom.getParent(node, '.comment-highlight');
+                            if (highlightNode) {
+                                editor.dom.remove(highlightNode, true);
+                                editor.nodeChanged();
+                                showToast("Comment Resolved", "Highlight removed from document.", "success");
+                            }
+                        }
+                    });
+
                     // Register Math Equation button
                     editor.ui.registry.addButton('math', {
                         text: 'Math Equation',
